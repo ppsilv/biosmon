@@ -1,0 +1,625 @@
+ca65 V2.18 - Ubuntu 2.19-1
+Main file   : bios.s
+Current file: bios.s
+
+000000r 1               ;***********************************************************************
+000000r 1               ; SERIAL 16c550 DRIVER
+000000r 1               ;
+000000r 1               .setcpu "6502"
+000000r 1               .debuginfo
+000000r 1               
+000000r 1               .segment "ZEROPAGE"
+000000r 1               RACC     = $30               ;;: .res 1
+000000r 1               RPHY     = $31               ;;: .res 1
+000000r 1               RPHX     = $32               ;;: .res 1
+000000r 1               MSGL     = $33
+000000r 1               MSGH     = $34
+000000r 1               TMP      = $35              ;;TEMPORARY REGISTERS
+000000r 1               TMP1     = $36
+000000r 1               TMP2     = $37
+000000r 1               LAST_CMD = $38
+000000r 1               ADDR1L   = $39          ; Digito 4 A do hexa 0xABCD
+000000r 1               ADDR1H   = $3A          ; Digito 3 B do hexa 0xABCD
+000000r 1               ADDR2L   = $3B          ; Digito 2 C do hexa 0xABCD
+000000r 1               ADDR2H   = $3C          ; Digito 1 D do hexa 0xABCD
+000000r 1               BSZ      = $3D          ; string size in buffer
+000000r 1               ERRO     = $3E          ; CODIGO DO ERRO
+000000r 1               COUNTER  = $3F
+000000r 1               
+000000r 1               BIN      = $200          ; Buffer size = 128 bytes
+000000r 1               
+000000r 1               ;0 - No errors
+000000r 1               ;1 - Erro na conversao hexadecimal
+000000r 1               
+000000r 1               .segment "BIOS"
+000000r 1               
+000000r 1               ;Uart registers
+000000r 1               PORT = $7800            ;;Uart address
+000000r 1               R_RX = $00    ;;receiver buffer register (read only)
+000000r 1               R_TX = $00    ;;transmitter holding register (write only)
+000000r 1               RDLL = $00    ;;divisor latch LSB (if DLAB=1)
+000000r 1               RDLH = $01    ;;divisor latch HSB (if DLAB=1)
+000000r 1               RIER = $01    ;;interrupt enable register
+000000r 1               RIIR = $02    ;;interrupt identification register
+000000r 1               RFCR = $02    ;;FIFO control register
+000000r 1               RLCR = $03    ;;line control register
+000000r 1               RMCR = $04    ;;modem control register
+000000r 1               RLSR = $05    ;;line status register
+000000r 1               RMSR = $06    ;;modem status register
+000000r 1               RSCR = $07	;;scratch register
+000000r 1               
+000000r 1               ; Constants
+000000r 1               .if .not .def(CR)
+000000r 1               	CR  = $0D ; Carriage Return
+000000r 1               .endif
+000000r 1               .if .not .def(LF)
+000000r 1               	LF  = $0A ; Line feed
+000000r 1               .endif
+000000r 1               .if .not .def(Q)
+000000r 1               	Q 		= $75
+000000r 1               .endif
+000000r 1               .if .not .def(T1)
+000000r 1               	T1		= $76
+000000r 1               .endif
+000000r 1               
+000000r 1               DIV_4800_LO   = 24
+000000r 1               DIV_4800_HI   = 0
+000000r 1               DIV_9600_LO   = 12
+000000r 1               DIV_9600_HI   = 0
+000000r 1               DIV_19200_LO  = 6
+000000r 1               DIV_19200_HI  = 0
+000000r 1               DIV_115200_LO = 1
+000000r 1               DIV_115200_HI = 0
+000000r 1               POLLED_MODE   = %00000000
+000000r 1               LCR_8N1       = %00000011
+000000r 1               DLAB          = %10000000
+000000r 1               FIFO_ENABLE   = %00000111 ;%00000111
+000000r 1               THR_EMPTY     = %01100000       ;;
+000000r 1               
+000000r 1               DATA_READY  = %00000001
+000000r 1               OVERRUN_ERR = %00000010
+000000r 1               PARITY_ERR  = %00000100
+000000r 1               FRAMING_ERR = %00001000
+000000r 1               BREAK_INT   = %00010000
+000000r 1               MCR_DTR  = $01  ;dtr output
+000000r 1               MCR_RTS  = $02  ;rts output
+000000r 1               MCR_OUT1 = $04  ;output #1
+000000r 1               MCR_OUT2 = $08  ;output #2
+000000r 1               MCR_LOOP = $10  ;loop back
+000000r 1               MCR_AFCE = $20  ;auto flow control enable
+000000r 1               
+000000r 1               INITUART:
+000000r 1  A9 80            LDA        #DLAB               ;set the divisor latch access bit (DLAB)
+000002r 1  8D 03 78         STA        PORT+RLCR
+000005r 1  A9 0C            LDA        #DIV_9600_LO        ;store divisor low byte (9600 baud @ 1,8 MHz clock)
+000007r 1  8D 00 78         STA        PORT+RDLL
+00000Ar 1  A9 00            LDA        #DIV_9600_HI        ;store divisor hi byte
+00000Cr 1  8D 01 78         STA        PORT+RDLH
+00000Fr 1  A9 07            LDA        #FIFO_ENABLE        ;enable the UART FIFO
+000011r 1  8D 02 78         STA        PORT+RFCR
+000014r 1  A9 00            LDA        #POLLED_MODE	       ;disable all interrupts
+000016r 1  8D 01 78         STA        PORT+RIER
+000019r 1  A9 03        	LDA        #LCR_8N1            ;set 8 data bits, 1 stop bit, no parity, disable DLAB
+00001Br 1  8D 03 78         STA        PORT+RLCR
+00001Er 1  A9 2B            LDA        #MCR_OUT2 + MCR_RTS + MCR_DTR + MCR_AFCE
+000020r 1  8D 04 78         STA        PORT+RMCR
+000023r 1  AD 00 78         LDA        PORT+R_RX           ;Clear RX buffer
+000026r 1  60               RTS
+000027r 1               
+000027r 1               
+000027r 1               ; A: Data read
+000027r 1               ; Returns:  F = C if character read
+000027r 1               ;           F = NC if no character read
+000027r 1               ; FUNÇÃO BLOCANTE COM CARACTER ECHO
+000027r 1               READ_BYTE:
+000027r 1  AD 05 78     	LDA PORT+RLSR 												    ;// check the line status register:
+00002Ar 1  29 1E        	AND #(OVERRUN_ERR | PARITY_ERR | FRAMING_ERR | BREAK_INT)   ; check for errors
+00002Cr 1  F0 06        	BEQ NO_ERR 												    ;// if no error bits, are set, no error
+00002Er 1  AD 00 78     	LDA PORT+R_RX
+000031r 1  4C rr rr     	JMP READ_BYTE
+000034r 1               NO_ERR:
+000034r 1  AD 05 78     	LDA PORT+RLSR 												    ;// reload the line status register
+000037r 1  29 01        	AND #DATA_READY
+000039r 1  F0 EC        	BEQ READ_BYTE   											;// if data ready is not set, loop
+00003Br 1  AD 00 78     	LDA PORT+R_RX
+00003Er 1               ;ECHO CHAR
+00003Er 1                   ;JSR WRITE_BYTE
+00003Er 1               ;*********
+00003Er 1  38           	SEC		    										;// otherwise, we have data! Load it. 				    									;// clear the carry flag to indicate no error
+00003Fr 1  60           	RTS
+000040r 1               										    ;// otherwise, there was an error. Clear the error byte
+000040r 1               
+000040r 1               ;*************************************************
+000040r 1               ; A: Data to write
+000040r 1               ;
+000040r 1               WRITE_BYTE:
+000040r 1  84 31            STY     RPHY                     ; Save Y Reg
+000042r 1  86 32            STX     RPHX                     ; Save X Reg
+000044r 1  85 30            STA     RACC                     ; Save A Reg
+000046r 1               WAIT_FOR_THR_EMPTY:
+000046r 1  AD 05 78         LDA     PORT+RLSR           ; Get the Line Status Register
+000049r 1  29 60            AND     #THR_EMPTY          ; Check for TX empty
+00004Br 1  F0 F9            BEQ     WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
+00004Dr 1  A5 30        	LDA     RACC                ;
+00004Fr 1  8D 00 78     	STA     PORT+R_TX 			; send the byte
+000052r 1               ;;DELAY BETWEEN CHAR SENT
+000052r 1               
+000052r 1  A9 FF            LDA     #$FF
+000054r 1  85 3F            STA     COUNTER
+000056r 1               @txdelay:
+000056r 1  C6 3F            DEC     COUNTER
+000058r 1  D0 FC            BNE     @txdelay
+00005Ar 1               
+00005Ar 1               ;;TXdelay:
+00005Ar 1               ;;      LDY   #6                ; Get delay value (clock rate in MHz 2 clock cycles)
+00005Ar 1               ;;MINIDLY:
+00005Ar 1               ;;      LDX   #$68              ; Seed X reg
+00005Ar 1               ;;DELAY_1:
+00005Ar 1               ;;      DEX                     ; Decrement low index
+00005Ar 1               ;;      BNE   DELAY_1           ; Loop back until done
+00005Ar 1               ;;      DEY                     ; Decrease by one
+00005Ar 1               ;;      BNE   MINIDLY           ; Loop until done
+00005Ar 1               
+00005Ar 1  A5 30            LDA     RACC
+00005Cr 1  C9 0D            CMP     #$0D
+00005Er 1  D0 0C            BNE     FIM
+000060r 1               @WAIT_FOR_THR_EMPTY:
+000060r 1  AD 05 78         LDA     PORT+RLSR           ; Get the Line Status Register
+000063r 1  29 60            AND     #THR_EMPTY          ; Check for TX empty
+000065r 1  F0 F9            BEQ     @WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
+000067r 1  A9 0A            LDA     #$0A
+000069r 1  8D 00 78     	STA     PORT+R_TX 			; send the byte
+00006Cr 1               FIM:
+00006Cr 1  A6 32            LDX     RPHX                     ; Restore X Reg
+00006Er 1  A4 31            LDY     RPHY                     ; Restore Y Reg
+000070r 1  A5 30            LDA     RACC                     ; Restore A Reg
+000072r 1  60               RTS
+000073r 1               
+000073r 1               RESET:
+000073r 1  78           	            SEI					; No interrupt
+000074r 1  D8           	            CLD					; Set decimal
+000075r 1  A2 FE        	            LDX #$FE 			; Set stack pointer
+000077r 1  9A           	            TXS
+000078r 1               
+000078r 1                               ;;Initializing some variables
+000078r 1  A9 00                        LDA     #$00
+00007Ar 1  85 39                        STA     ADDR1L
+00007Cr 1  85 3A                        STA     ADDR1H
+00007Er 1  85 3B                        STA     ADDR2L
+000080r 1  85 3C                        STA     ADDR2H
+000082r 1               
+000082r 1  20 rr rr                     JSR     INITUART
+000085r 1  A9 rr                        LDA     #<MSG1
+000087r 1  85 33                        STA     MSGL
+000089r 1  A9 rr                        LDA     #>MSG1
+00008Br 1  85 34                        STA     MSGH
+00008Dr 1  20 rr rr                     JSR     SHWMSG
+000090r 1               NEXT_CHAR:
+000090r 1  A9 0D                        LDA     #$0D
+000092r 1  20 rr rr                     JSR     WRITE_BYTE
+000095r 1  A9 3E                        LDA     #'>'
+000097r 1  20 rr rr                     JSR     WRITE_BYTE
+00009Ar 1               
+00009Ar 1  20 rr rr                     JSR     READ_BYTE
+00009Dr 1  20 rr rr                     JSR     WRITE_BYTE
+0000A0r 1                               ;CMP     #'S'            ;Show memory address data format: ADDR
+0000A0r 1                               ;BEQ     TEMP_S
+0000A0r 1  C9 44                        CMP     #'D'            ;Dump de memoria format: ADDR:ADDR
+0000A2r 1  F0 12                        BEQ     TEMP_D
+0000A4r 1  C9 4D                        CMP     #'M'            ;Put byte into memory address
+0000A6r 1  F0 11                        BEQ     TEMP_M
+0000A8r 1  C9 52                        CMP     #'R'            ;Run programa na format: ADDR R
+0000AAr 1  F0 10                        BEQ     TEMP_R
+0000ACr 1  C9 48                        CMP     #'H'            ;Show help
+0000AEr 1  F0 0F                        BEQ     TEMP_H
+0000B0r 1  4C rr rr                     JMP     NEXT_CHAR
+0000B3r 1  4C rr rr     TEMP_S:         JMP     DIGITOU_S
+0000B6r 1  4C rr rr     TEMP_D:         JMP     DIGITOU_D
+0000B9r 1  4C rr rr     TEMP_M:         JMP     DIGITOU_M
+0000BCr 1  4C rr rr     TEMP_R:         JMP     DIGITOU_R
+0000BFr 1  4C rr rr     TEMP_H:         JMP     DIGITOU_H
+0000C2r 1               
+0000C2r 1               DIGITOU_S:
+0000C2r 1  85 38                        STA     LAST_CMD
+0000C4r 1  A9 rr                        LDA     #<MSG2
+0000C6r 1  85 33                        STA     MSGL
+0000C8r 1  A9 rr                        LDA     #>MSG2
+0000CAr 1  85 34                        STA     MSGH
+0000CCr 1  20 rr rr                     JSR     SHWMSG
+0000CFr 1  20 rr rr                     JSR     GETLINE
+0000D2r 1  A9 00                        LDA     #<BIN
+0000D4r 1  85 33                        STA     MSGL
+0000D6r 1  A9 02                        LDA     #>BIN
+0000D8r 1  85 34                        STA     MSGH
+0000DAr 1  20 rr rr                     JSR     SHWMSG
+0000DDr 1  60                           RTS
+0000DEr 1  4C rr rr                     JMP     NEXT_CHAR
+0000E1r 1               DIGITOU_D:
+0000E1r 1  85 38                        STA     LAST_CMD
+0000E3r 1  A9 rr                        LDA     #<MSG3
+0000E5r 1  85 33                        STA     MSGL
+0000E7r 1  A9 rr                        LDA     #>MSG3
+0000E9r 1  85 34                        STA     MSGH
+0000EBr 1  20 rr rr                     JSR     SHWMSG
+0000EEr 1  20 rr rr                     JSR     GETLINE
+0000F1r 1                               ;Get addr from
+0000F1r 1  A0 00                        LDY     #$00
+0000F3r 1  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+0000F6r 1  A6 36                        LDX     TMP1
+0000F8r 1  A4 37                        LDY     TMP2
+0000FAr 1  20 rr rr                     JSR     SWAP_XY
+0000FDr 1  86 39                        STX     ADDR1L
+0000FFr 1  84 3A                        STY     ADDR1H
+000101r 1               
+000101r 1  A0 04                        LDY     #$04
+000103r 1  B9 00 02                     LDA     BIN,Y
+000106r 1  C9 3E                        CMP     #$3E
+000108r 1  D0 49                        BNE     DIGITOU_D_SHOWMEM
+00010Ar 1               
+00010Ar 1                               ;Get addr to
+00010Ar 1  A0 05                        LDY     #$05
+00010Cr 1  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+00010Fr 1  A6 36                        LDX     TMP1
+000111r 1  A4 37                        LDY     TMP2
+000113r 1  20 rr rr                     JSR     SWAP_XY
+000116r 1  86 3B                        STX     ADDR2L
+000118r 1  84 3C                        STY     ADDR2H
+00011Ar 1                               ;JSR     PRINT_ADDR_HEXA
+00011Ar 1  A9 08                        LDA     #$08
+00011Cr 1  85 37                        STA     TMP2
+00011Er 1  A2 08        LINHA:          LDX     #$08
+000120r 1  A9 0D                        LDA     #$0D
+000122r 1  20 rr rr                     JSR     WRITE_BYTE
+000125r 1  A5 3A                        LDA     ADDR1H
+000127r 1  20 rr rr                     JSR     PRBYTE
+00012Ar 1  A5 39                        LDA     ADDR1L
+00012Cr 1  20 rr rr                     JSR     PRBYTE
+00012Fr 1  A9 20                        LDA     #' '
+000131r 1  20 rr rr                     JSR     WRITE_BYTE
+000134r 1               DIGITOU_D_WORK:
+000134r 1                               ;addressing mode of 65C02
+000134r 1                               ;LDA     (ADDR1L)
+000134r 1                               ;addressing mode of 6502
+000134r 1  A0 00                        LDY     #$0
+000136r 1  B1 39                        LDA     (ADDR1L),Y
+000138r 1                               ;******************
+000138r 1  20 rr rr                     JSR     PRBYTE
+00013Br 1  A9 20                        LDA     #' '
+00013Dr 1  20 rr rr                     JSR     WRITE_BYTE
+000140r 1  20 rr rr                     JSR     INC_ADDR
+000143r 1  20 rr rr                     JSR     COMP_ADDR
+000146r 1  F0 EC                        BEQ     DIGITOU_D_WORK
+000148r 1  B0 06                        BCS     DIGITOU_D_FIM
+00014Ar 1                               ;JSR     PRINT_ADDR_HEXA
+00014Ar 1                               ;JSR     READ_BYTE
+00014Ar 1  CA                           DEX
+00014Br 1  F0 D1                        BEQ     LINHA
+00014Dr 1  4C rr rr                     JMP     DIGITOU_D_WORK
+000150r 1               DIGITOU_D_FIM:
+000150r 1  4C rr rr                     JMP     NEXT_CHAR
+000153r 1               DIGITOU_D_SHOWMEM:
+000153r 1  A0 04                        LDY     #$04
+000155r 1  B9 00 02                     LDA     BIN,Y
+000158r 1  C9 3A                        CMP     #$3A
+00015Ar 1  F0 16                        BEQ     DIGITOU_D_SHOWMEM_FIM
+00015Cr 1  A5 3A                        LDA     ADDR1H
+00015Er 1  20 rr rr                     JSR     PRBYTE
+000161r 1  A5 39                        LDA     ADDR1L
+000163r 1  20 rr rr                     JSR     PRBYTE
+000166r 1  A9 20                        LDA     #' '
+000168r 1  20 rr rr                     JSR     WRITE_BYTE
+00016Br 1                               ;addressing mode of 65C02
+00016Br 1                               ;LDA     (ADDR1L)
+00016Br 1                               ;addressing mode of 6502
+00016Br 1  A0 00                        LDY     #$0
+00016Dr 1  B1 39                        LDA     (ADDR1L),Y
+00016Fr 1               
+00016Fr 1  20 rr rr                     JSR     PRBYTE
+000172r 1               DIGITOU_D_SHOWMEM_FIM:
+000172r 1  4C rr rr                     JMP     NEXT_CHAR
+000175r 1               
+000175r 1               DIGITOU_M:
+000175r 1  85 38                        STA     LAST_CMD
+000177r 1  A9 rr                        LDA     #<MSG7
+000179r 1  85 33                        STA     MSGL
+00017Br 1  A9 rr                        LDA     #>MSG7
+00017Dr 1  85 34                        STA     MSGH
+00017Fr 1  20 rr rr                     JSR     SHWMSG
+000182r 1  20 rr rr                     JSR     GETLINE
+000185r 1                               ;Get addr from
+000185r 1  A0 00                        LDY     #$00
+000187r 1  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+00018Ar 1  A6 36                        LDX     TMP1
+00018Cr 1  A4 37                        LDY     TMP2
+00018Er 1  20 rr rr                     JSR     SWAP_XY
+000191r 1  86 39                        STX     ADDR1L
+000193r 1  84 3A                        STY     ADDR1H
+000195r 1               
+000195r 1                               ;VERIFICAR SE O COMANDO É :
+000195r 1  A0 04                        LDY     #$04
+000197r 1  B9 00 02                     LDA     BIN,Y
+00019Ar 1  C9 3A                        CMP     #$3A
+00019Cr 1  D0 19                        BNE     DIGITOU_M_FIM
+00019Er 1               
+00019Er 1  A0 05                        LDY     #$05
+0001A0r 1  B9 00 02                     LDA     BIN,Y
+0001A3r 1  20 rr rr                     JSR     ROL_LEFT
+0001A6r 1  85 36                        STA     TMP1
+0001A8r 1  C8                           INY
+0001A9r 1  B9 00 02                     LDA     BIN,Y
+0001ACr 1  20 rr rr                     JSR     NO_ROL_RIGHT
+0001AFr 1  05 36                        ORA     TMP1
+0001B1r 1  85 36                        STA     TMP1
+0001B3r 1                               ;addressing mode of 65C02
+0001B3r 1                               ;STA     (ADDR1L)
+0001B3r 1                               ;addressing mode of 6502
+0001B3r 1  A0 00                        LDY     #$0
+0001B5r 1  91 39                        STA     (ADDR1L),Y
+0001B7r 1               
+0001B7r 1                               ;LDA     ADDR1H
+0001B7r 1                               ;JSR     PRBYTE
+0001B7r 1                               ;LDA     ADDR1L
+0001B7r 1                               ;JSR     PRBYTE
+0001B7r 1                               ;LDA     #':'
+0001B7r 1                               ;JSR     WRITE_BYTE
+0001B7r 1                               ;LDA     TMP1
+0001B7r 1                               ;JSR     PRBYTE
+0001B7r 1               DIGITOU_M_FIM:
+0001B7r 1  4C rr rr                     JMP     NEXT_CHAR
+0001BAr 1               
+0001BAr 1               DIGITOU_H:
+0001BAr 1  85 38                        STA     LAST_CMD
+0001BCr 1  A9 rr                        LDA     #<HELP
+0001BEr 1  85 33                        STA     MSGL
+0001C0r 1  A9 rr                        LDA     #>HELP
+0001C2r 1  85 34                        STA     MSGH
+0001C4r 1  20 rr rr                     JSR     SHWMSG
+0001C7r 1  4C rr rr                     JMP     NEXT_CHAR
+0001CAr 1               
+0001CAr 1               DIGITOU_R:
+0001CAr 1  85 38                        STA     LAST_CMD
+0001CCr 1  A9 rr                        LDA     #<MSG4
+0001CEr 1  85 33                        STA     MSGL
+0001D0r 1  A9 rr                        LDA     #>MSG4
+0001D2r 1  85 34                        STA     MSGH
+0001D4r 1  20 rr rr                     JSR     SHWMSG
+0001D7r 1  20 rr rr                     JSR     DIGITOU_S
+0001DAr 1  A0 00                        LDY     #$00
+0001DCr 1  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+0001DFr 1  A6 36                        LDX     TMP1
+0001E1r 1  A4 37                        LDY     TMP2
+0001E3r 1  20 rr rr                     JSR     SWAP_XY
+0001E6r 1  86 39                        STX     ADDR1L
+0001E8r 1  84 3A                        STY     ADDR1H
+0001EAr 1                               ;JSR     PRINT_ADDR_HEXA
+0001EAr 1  6C 39 00                     JMP     (ADDR1L)
+0001EDr 1  4C rr rr                     JMP     NEXT_CHAR
+0001F0r 1               SWAP_XY:
+0001F0r 1  84 35                        STY     TMP     ; Y 2 M
+0001F2r 1  8A                           TXA             ; X 2 A
+0001F3r 1  A8                           TAY             ; A 2 Y
+0001F4r 1  A6 35                        LDX     TMP     ; M 2 X
+0001F6r 1  60                           RTS
+0001F7r 1               
+0001F7r 1               
+0001F7r 1               ROL_LEFT:
+0001F7r 1  20 rr rr                     JSR     CONV_HEX_1DIG
+0001FAr 1  90 0F                        BCC     CONV_HEX_4DIG_FIM
+0001FCr 1  2A                           ROL
+0001FDr 1  2A                           ROL
+0001FEr 1  2A                           ROL
+0001FFr 1  2A                           ROL
+000200r 1  29 F0                        AND     #$F0
+000202r 1  60                           RTS
+000203r 1               NO_ROL_RIGHT:
+000203r 1  20 rr rr                     JSR     CONV_HEX_1DIG
+000206r 1  90 03                        BCC     CONV_HEX_4DIG_FIM
+000208r 1  29 0F                        AND     #$0F
+00020Ar 1  60                           RTS
+00020Br 1               CONV_HEX_4DIG_FIM:
+00020Br 1  A9 rr                        LDA     #<MSG6
+00020Dr 1  85 33                        STA     MSGL
+00020Fr 1  A9 rr                        LDA     #>MSG6
+000211r 1  85 34                        STA     MSGH
+000213r 1  20 rr rr                     JSR     SHWMSG
+000216r 1  A9 01                        LDA     #$01
+000218r 1  85 3E                        STA     ERRO
+00021Ar 1  18                           CLC
+00021Br 1  60                           RTS
+00021Cr 1               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+00021Cr 1               ;CONV_ADDR_TO_HEX:
+00021Cr 1               ;
+00021Cr 1               CONV_ADDR_TO_HEX:
+00021Cr 1                               ;;Dig 4
+00021Cr 1  B9 00 02                     LDA     BIN,Y
+00021Fr 1  20 rr rr                     JSR     ROL_LEFT
+000222r 1  85 36                        STA     TMP1
+000224r 1                               ;;Dig 3
+000224r 1  C8                           INY
+000225r 1  B9 00 02                     LDA     BIN,Y
+000228r 1  20 rr rr                     JSR     NO_ROL_RIGHT
+00022Br 1  05 36                        ORA     TMP1
+00022Dr 1  85 36                        STA     TMP1
+00022Fr 1                               ;;Dig 2
+00022Fr 1  C8                           INY
+000230r 1  B9 00 02                     LDA     BIN,Y
+000233r 1  20 rr rr                     JSR     ROL_LEFT
+000236r 1  85 35                        STA     TMP
+000238r 1                               ;;Dig 1
+000238r 1  C8                           INY
+000239r 1  B9 00 02                     LDA     BIN,Y
+00023Cr 1  20 rr rr                     JSR     NO_ROL_RIGHT
+00023Fr 1  05 35                        ORA     TMP
+000241r 1  85 37                        STA     TMP2
+000243r 1               
+000243r 1  38                           SEC
+000244r 1  60                           RTS
+000245r 1               
+000245r 1               ;*******************************************
+000245r 1               ;CONV_HEX_1DIG:
+000245r 1               ;Parameter: A digit to be converted
+000245r 1               ;Return...: A digit converted
+000245r 1               CONV_HEX_1DIG:
+000245r 1  C9 30                        CMP     #$30
+000247r 1  90 18                        BCC     CONV_HEX_1DIG_FIM
+000249r 1  C9 3A                        CMP     #$3A
+00024Br 1  90 0F                        BCC     DIG_0_A_9
+00024Dr 1  C9 41                        CMP     #$41
+00024Fr 1  B0 02                        BCS     DIG_A_TO_Z
+000251r 1                               ;CARACTER PODE SER UM DESSES : ; < = > ? @
+000251r 1  18                           CLC     ;CLEAR CARRY FLAG DIG NOT CONVERTED
+000252r 1  60                           RTS
+000253r 1               DIG_A_TO_Z:
+000253r 1  C9 47                        CMP     #$47
+000255r 1  B0 0A                        BCS     CONV_HEX_1DIG_FIM
+000257r 1  18                           CLC
+000258r 1  E9 36                        SBC     #$36
+00025Ar 1  78                           SEI     ;SET CARRY FLAG DIG CONVERTED
+00025Br 1  60                           RTS
+00025Cr 1               DIG_0_A_9:
+00025Cr 1  18                           CLC
+00025Dr 1  E9 2F                        SBC     #$2F
+00025Fr 1  38                           SEC     ;SET CARRY FLAG DIG CONVERTED
+000260r 1  60                           RTS
+000261r 1               CONV_HEX_1DIG_FIM:
+000261r 1  18                           CLC
+000262r 1  60                           RTS
+000263r 1               ;********************************************
+000263r 1               ;Print 4 digits hexadecimal
+000263r 1               PRINT_ADDR_HEXA:
+000263r 1  A9 5B                        LDA     #'['
+000265r 1  20 rr rr                     JSR     WRITE_BYTE
+000268r 1  A5 39                        LDA     ADDR1L
+00026Ar 1  20 rr rr                     JSR     PRBYTE
+00026Dr 1  A5 3A                        LDA     ADDR1H
+00026Fr 1  20 rr rr                     JSR     PRBYTE
+000272r 1  A5 38                        LDA     LAST_CMD
+000274r 1  C9 44                        CMP     #'D'
+000276r 1  D0 0F                        BNE     PRINT_ADDR_HEXA_FIM
+000278r 1  A9 2E                        LDA     #'.'
+00027Ar 1  20 rr rr                     JSR     WRITE_BYTE
+00027Dr 1  A5 3B                        LDA     ADDR2L
+00027Fr 1  20 rr rr                     JSR     PRBYTE
+000282r 1  A5 3C                        LDA     ADDR2H
+000284r 1  20 rr rr                     JSR     PRBYTE
+000287r 1               PRINT_ADDR_HEXA_FIM:
+000287r 1  A9 5D                        LDA     #']'
+000289r 1  20 rr rr                     JSR     WRITE_BYTE
+00028Cr 1  60                           RTS
+00028Dr 1               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+00028Dr 1  A0 00        GETLINE:        LDY     #$00
+00028Fr 1  20 rr rr     GETLINE1:       JSR     READ_BYTE
+000292r 1  20 rr rr                     JSR     WRITE_BYTE
+000295r 1  99 00 02                     STA     BIN,Y
+000298r 1  C8                           INY
+000299r 1  C9 0D                        CMP     #$0D
+00029Br 1  D0 F2                        BNE     GETLINE1
+00029Dr 1  A9 00                        LDA     #$00
+00029Fr 1  99 00 02                     STA     BIN,Y
+0002A2r 1  84 3D                        STY     BSZ
+0002A4r 1  60                           RTS
+0002A5r 1  A0 00        SHWMSG:          LDY #$0
+0002A7r 1  B1 33        SMSG:            LDA (MSGL),Y
+0002A9r 1  F0 06                         BEQ SMDONE
+0002ABr 1  20 rr rr                      JSR WRITE_BYTE
+0002AEr 1  C8                            INY
+0002AFr 1  D0 F6                         BNE SMSG
+0002B1r 1  60           SMDONE:          RTS
+0002B2r 1               
+0002B2r 1  48           PRBYTE:     PHA             ;Save A for LSD.
+0002B3r 1  4A                       LSR
+0002B4r 1  4A                       LSR
+0002B5r 1  4A                       LSR             ;MSD to LSD position.
+0002B6r 1  4A                       LSR
+0002B7r 1  20 rr rr                 JSR PRHEX       ;Output hex digit.
+0002BAr 1  68                       PLA             ;Restore A.
+0002BBr 1  29 0F        PRHEX:      AND #$0F        ;Mask LSD for hex print.
+0002BDr 1  09 B0                    ORA #$B0        ;Add "0".
+0002BFr 1  C9 BA                    CMP #$BA        ;Digit?
+0002C1r 1  90 02                    BCC ECHO        ;Yes, output it.
+0002C3r 1  69 06                    ADC #$06        ;Add offset for letter.
+0002C5r 1  48           ECHO:       PHA             ;*Save A
+0002C6r 1  29 7F                    AND #$7F        ;*Change to "standard ASCII"
+0002C8r 1  20 rr rr                 JSR  WRITE_BYTE
+0002CBr 1  68                       PLA             ;*Restore A
+0002CCr 1  60                       RTS             ;*Done, over and out...
+0002CDr 1               ;Incrementa endereco
+0002CDr 1               INC_ADDR:
+0002CDr 1  18                       CLC
+0002CEr 1  A9 01                    LDA #$01
+0002D0r 1  65 39                    ADC ADDR1L
+0002D2r 1  85 39                    STA ADDR1L
+0002D4r 1  A9 00                    LDA #$00
+0002D6r 1  65 3A                    ADC ADDR1H
+0002D8r 1  85 3A                    STA ADDR1H
+0002DAr 1  60                       RTS
+0002DBr 1               ;Compara enderecos
+0002DBr 1               COMP_ADDR:
+0002DBr 1  A5 3A                    LDA ADDR1H
+0002DDr 1  C5 3C                    CMP ADDR2H
+0002DFr 1  D0 04                    BNE COMP_ADDR_FIM
+0002E1r 1  A5 39                    LDA ADDR1L
+0002E3r 1  C5 3B                    CMP ADDR2L
+0002E5r 1               COMP_ADDR_FIM:
+0002E5r 1  60                       RTS
+0002E6r 1               
+0002E6r 1               
+0002E6r 1  0D 0A 50 44  MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - 0.1",CR,0
+0002EAr 1  53 49 4C 56  
+0002EEr 1  41 20 2D 20  
+000306r 1  0D 49 6E 70  MSG2:            .byte CR,"Input Addr: ",CR,0
+00030Ar 1  75 74 20 41  
+00030Er 1  64 64 72 3A  
+000315r 1  0D 44 75 6D  MSG3:            .byte CR,"Dump Mem. Addr: Fmt XXXX>XXXX or XXXX:",CR,0
+000319r 1  70 20 4D 65  
+00031Dr 1  6D 2E 20 41  
+00033Er 1  0D 52 75 6E  MSG4:            .byte CR,"Run program in Addr: Format abcd",CR,0
+000342r 1  20 70 72 6F  
+000346r 1  67 72 61 6D  
+000361r 1  0D 45 58 45  MSG5:            .byte CR,"EXECUTADO",CR,0
+000365r 1  43 55 54 41  
+000369r 1  44 4F 0D 00  
+00036Dr 1  0D 48 65 78  MSG6:            .byte CR,"Hex conv. error",CR,0
+000371r 1  20 63 6F 6E  
+000375r 1  76 2E 20 65  
+00037Fr 1  0D 50 6F 6B  MSG7:            .byte CR,"Poke: Fmt addr:dt",CR,0
+000383r 1  65 3A 20 46  
+000387r 1  6D 74 20 61  
+000393r 1  0D 48 65 6C  HELP:            .byte CR,"Help BIOSMON v 0.1",CR,LF
+000397r 1  70 20 42 49  
+00039Br 1  4F 53 4D 4F  
+0003A8r 1  43 6F 6D 6D                   .byte "Commands:",CR
+0003ACr 1  61 6E 64 73  
+0003B0r 1  3A 0D        
+0003B2r 1  20 20 20 20                   .byte "         S - Put data into buffer",CR
+0003B6r 1  20 20 20 20  
+0003BAr 1  20 53 20 2D  
+0003D4r 1  20 20 20 20                   .byte "         D - Dump memory",CR
+0003D8r 1  20 20 20 20  
+0003DCr 1  20 44 20 2D  
+0003EDr 1  20 20 20 20                   .byte "         M - Poke",CR
+0003F1r 1  20 20 20 20  
+0003F5r 1  20 4D 20 2D  
+0003FFr 1  20 20 20 20                   .byte "         R - Run program",CR
+000403r 1  20 20 20 20  
+000407r 1  20 52 20 2D  
+000418r 1  20 20 20 20                   .byte "         H - Show help",CR,LF,0
+00041Cr 1  20 20 20 20  
+000420r 1  20 48 20 2D  
+000431r 1               
+000431r 1               ;Used just for test of run cmd.
+000431r 1               .segment "WOZMON"
+000000r 1               
+000000r 1  A9 rr                        LDA     #<MSG5
+000002r 1  85 33                        STA     MSGL
+000004r 1  A9 rr                        LDA     #>MSG5
+000006r 1  85 34                        STA     MSGH
+000008r 1  20 rr rr                     JSR     SHWMSG
+00000Br 1  4C rr rr                     JMP     NEXT_CHAR
+00000Er 1               
+00000Er 1               .segment "RESETVEC"
+000000r 1               
+000000r 1  00 0F                        .word   $0F00          ; NMI vector
+000002r 1  rr rr                        .word   RESET          ; RESET vector
+000004r 1  00 00                        .word   $0000          ; IRQ vector
+000004r 1               

@@ -1,7 +1,7 @@
 ;***********************************************************************
 ; SERIAL 16c550 DRIVER
 ;
-.setcpu "65C02"
+.setcpu "6502"
 .debuginfo
 
 .segment "ZEROPAGE"
@@ -20,7 +20,7 @@ ADDR2L   = $3B          ; Digito 2 C do hexa 0xABCD
 ADDR2H   = $3C          ; Digito 1 D do hexa 0xABCD
 BSZ      = $3D          ; string size in buffer 
 ERRO     = $3E          ; CODIGO DO ERRO
-
+COUNTER  = $3F
 
 BIN      = $200          ; Buffer size = 128 bytes
 
@@ -141,8 +141,9 @@ WAIT_FOR_THR_EMPTY:
 ;;DELAY BETWEEN CHAR SENT
 
     LDA     #$FF
+    STA     COUNTER
 @txdelay:
-    DEC
+    DEC     COUNTER    
     BNE     @txdelay
 
 ;;TXdelay:
@@ -272,7 +273,12 @@ LINHA:          LDX     #$08
                 LDA     #' '
                 JSR     WRITE_BYTE
 DIGITOU_D_WORK:
-                LDA     (ADDR1L)
+                ;addressing mode of 65C02
+                ;LDA     (ADDR1L)
+                ;addressing mode of 6502
+                LDY     #$0
+                LDA     (ADDR1L),Y
+                ;******************
                 JSR     PRBYTE    
                 LDA     #' '
                 JSR     WRITE_BYTE
@@ -298,7 +304,12 @@ DIGITOU_D_SHOWMEM:
                 JSR     PRBYTE    
                 LDA     #' '
                 JSR     WRITE_BYTE
-                LDA     (ADDR1L)
+                ;addressing mode of 65C02
+                ;LDA     (ADDR1L)
+                ;addressing mode of 6502
+                LDY     #$0
+                LDA     (ADDR1L),Y
+
                 JSR     PRBYTE    
 DIGITOU_D_SHOWMEM_FIM:
                 JMP     NEXT_CHAR
@@ -335,7 +346,12 @@ DIGITOU_M:
                 JSR     NO_ROL_RIGHT
                 ORA     TMP1
                 STA     TMP1
-                STA     (ADDR1L)
+                ;addressing mode of 65C02
+                ;STA     (ADDR1L)
+                ;addressing mode of 6502
+                LDY     #$0
+                STA     (ADDR1L),Y                
+
                 ;LDA     ADDR1H
                 ;JSR     PRBYTE
                 ;LDA     ADDR1L
@@ -548,7 +564,7 @@ MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - 0.1",CR,0
 MSG2:            .byte CR,"Input Addr: ",CR,0
 MSG3:            .byte CR,"Dump Mem. Addr: Fmt XXXX>XXXX or XXXX:",CR,0
 MSG4:            .byte CR,"Run program in Addr: Format abcd",CR,0
-;MSG5:            .byte CR,"EXECUTADO",CR,0
+MSG5:            .byte CR,"EXECUTADO",CR,0
 MSG6:            .byte CR,"Hex conv. error",CR,0
 MSG7:            .byte CR,"Poke: Fmt addr:dt",CR,0
 HELP:            .byte CR,"Help BIOSMON v 0.1",CR,LF
@@ -558,17 +574,16 @@ HELP:            .byte CR,"Help BIOSMON v 0.1",CR,LF
                  .byte "         M - Poke",CR
                  .byte "         R - Run program",CR
                  .byte "         H - Show help",CR,LF,0
-;.include "wozmon.s"
 
 ;Used just for test of run cmd. 
-;.segment "WOZMON"
-;
-;                LDA     #<MSG5
-;                STA     MSGL
-;                LDA     #>MSG5
-;                STA     MSGH
-;                JSR     SHWMSG
-;                JMP     NEXT_CHAR
+.segment "WOZMON"
+
+                LDA     #<MSG5
+                STA     MSGL
+                LDA     #>MSG5
+                STA     MSGH
+                JSR     SHWMSG
+                JMP     NEXT_CHAR
 
 .segment "RESETVEC"
 
