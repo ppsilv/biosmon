@@ -7,8 +7,8 @@ bios.o:
     DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
     ZEROPAGE          Offs=000000  Size=000000  Align=00001  Fill=0000
     NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
-    BIOS              Offs=000000  Size=000431  Align=00001  Fill=0000
-    WOZMON            Offs=000000  Size=00000E  Align=00001  Fill=0000
+    DRV               Offs=000000  Size=0000AB  Align=00001  Fill=0000
+    BIOS              Offs=000000  Size=00041A  Align=00001  Fill=0000
     RESETVEC          Offs=000000  Size=000006  Align=00001  Fill=0000
 
 
@@ -16,14 +16,14 @@ Segment list:
 -------------
 Name                   Start     End    Size  Align
 ----------------------------------------------------
+BSS                   000000  000000  000000  00001
 DATA                  000000  000000  000000  00001
 NULL                  000000  000000  000000  00001
 RODATA                000000  000000  000000  00001
 ZEROPAGE              000000  000000  000000  00001
-BSS                   000100  000100  000000  00001
 CODE                  008000  008000  000000  00001
-WOZMON                00FA00  00FA0D  00000E  00001
-BIOS                  00FB00  00FF30  000431  00001
+DRV                   00FA00  00FAAA  0000AB  00001
+BIOS                  00FB00  00FF19  00041A  00001
 RESETVEC              00FFFA  00FFFF  000006  00001
 
 
