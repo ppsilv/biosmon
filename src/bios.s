@@ -1,30 +1,23 @@
 ;***********************************************************************
 ; SERIAL 16c550 DRIVER
-; AUTHOR: Paulo da Silva (pgordao)
 ;
-; Version: 0.0.2
+; Version.: 0.0.3
+;
+; The verion 0.0.3 does not has the change of read and write bytes to support msbasic.
+;
 
-.setcpu "6502"
+.setcpu "65C02"
+.debuginfo
 
 .segment "ZEROPAGE"
 RACC     = $30               ;;: .res 1
 RPHY     = $31               ;;: .res 1
 RPHX     = $32               ;;: .res 1
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; These variable is just for test of UART.
 MSGL     = $33
 MSGH     = $34
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; These variables is to save registers X and Y in cpu 6502 although it does
-; not have PHX and PHY.
-MPHX     = $35
-MPHY     = $36
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Counter is to be used com DEC in 6502 that does not has a dec for Acc
-COUNTER  = $37
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TMP      = $35              ;;TEMPORARY REGISTERS
+TMP1     = $36
+TMP2     = $37
 LAST_CMD = $38  
 ADDR1L   = $39          ; Digito 4 A do hexa 0xABCD
 ADDR1H   = $3A          ; Digito 3 B do hexa 0xABCD
@@ -32,18 +25,9 @@ ADDR2L   = $3B          ; Digito 2 C do hexa 0xABCD
 ADDR2H   = $3C          ; Digito 1 D do hexa 0xABCD
 BSZ      = $3D          ; string size in buffer 
 ERRO     = $3E          ; CODIGO DO ERRO
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;Flag to sign the use of WRITE_BYTE or WRITE_BYTE_LF
-MEOR     = $3F
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-TMP      = $40          ;;TEMPORARY REGISTERS
-TMP1     = $41
-TMP2     = $42
+COUNTER  = $3F
 
-BIN      = $0200          ; Buffer size = 128 bytes
-
-;0 - No errors
-;1 - Erro na conversao hexadecimal
+BIN      = $200          ; Buffer size = 128 bytes
 
 .segment "DRV"
 
@@ -69,6 +53,12 @@ RSCR = $07	;;scratch register
 .if .not .def(LF)
 	LF  = $0A ; Line feed
 .endif	
+.if .not .def(Q)
+	Q 		= $75
+.endif	
+.if .not .def(T1)
+	T1		= $76
+.endif
 
 DIV_4800_LO   = 24
 DIV_4800_HI   = 0
@@ -96,8 +86,6 @@ MCR_OUT2 = $08  ;output #2
 MCR_LOOP = $10  ;loop back  
 MCR_AFCE = $20  ;auto flow control enable
 
-;RESET:
-;    JMP     RESET1
 
 INITUART:
     LDA        #DLAB               ;set the divisor latch access bit (DLAB)
@@ -117,143 +105,84 @@ INITUART:
     LDA        PORT+R_RX           ;Clear RX buffer      
     RTS	
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; B_READ_BYTE: Read byte from UART waiting for it (BLOCANT)
-; Registers changed: A
-; Flag CARRY not changed.
-;
-B_READ_BYTE:
-	LDA PORT+RLSR 												;// check the line status register:
-	AND #(OVERRUN_ERR | PARITY_ERR | FRAMING_ERR | BREAK_INT)   ; check for errors
-	BEQ @NO_ERR 												    ;// if no error bits, are set, no error
-	LDA PORT+R_RX
-	JMP B_READ_BYTE
-@NO_ERR:
-	LDA PORT+RLSR 												    ;// reload the line status register
-	AND #DATA_READY
-	BEQ B_READ_BYTE   											;// if data ready is not set, loop
-	LDA PORT+R_RX
-	RTS
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; B_READ_BYTE_ECHO: Read byte from UART waiting for it (BLOCANT) with echo
-; Registers changed: A
-; Flag CARRY not changed.
-;
-B_READ_BYTE_ECHO:
-    JSR B_READ_BYTE
-;ECHO CHAR
-    JSR WRITE_BYTE
-;*********
-	RTS
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; READ_BYTE: Read byte from UART waiting for it (NO BLOCANT)
-; Registers changed: A, Y
-; Flag CARRY: Set when character ready
-;             Clear when no character ready
+; A: Data read
+; Returns:  F = C if character read
+;           F = NC if no character read
+; FUNÇÃO BLOCANTE COM CARACTER ECHO
 READ_BYTE:
-    STY     MPHY                ; Save Y Reg
-	LDA PORT+RLSR 												;// check the line status register:
+	LDA PORT+RLSR 												    ;// check the line status register:
 	AND #(OVERRUN_ERR | PARITY_ERR | FRAMING_ERR | BREAK_INT)   ; check for errors
-	BEQ @NO_ERR 												    ;// if no error bits, are set, no error
+	BEQ NO_ERR 												    ;// if no error bits, are set, no error
 	LDA PORT+R_RX
-	JMP NO_CHAR ;READ_BYTE
-@NO_ERR:
+	JMP READ_BYTE													 
+NO_ERR:
 	LDA PORT+RLSR 												    ;// reload the line status register
-	AND #DATA_READY
-	BEQ NO_CHAR   											;// if data ready is not set, loop
-	LDA PORT+R_RX
-    LDY     #$FF
-@txdelay:
-    DEY
-    BNE     @txdelay
-    LDY     MPHY
-	SEC		    										;// otherwise, we have data! Load it. 				    									;// clear the carry flag to indicate no error
-	RTS
-NO_CHAR:
-    LDY     #$FF
-@txdelay1:
-    DEY
-    BNE     @txdelay1
-    LDY     MPHY
-    CLC
-    RTS
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; READ_BYTE_ECHO: Read byte from UART waiting for it (NO BLOCANT) with echo
-; Registers changed: A, Y
-; Flag CARRY: Set when character ready
-;             Clear when no character ready
-READ_BYTE_ECHO:
-    JSR     READ_BYTE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	AND #DATA_READY	
+	BEQ READ_BYTE   											;// if data ready is not set, loop
+	LDA PORT+R_RX 
 ;ECHO CHAR
-    JSR     WRITE_BYTE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    RTS
+    ;JSR WRITE_BYTE
+;*********
+	SEC		    										;// otherwise, we have data! Load it. 				    									;// clear the carry flag to indicate no error
+	RTS            	
+										    ;// otherwise, there was an error. Clear the error byte
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; WRITE_BYTE: Write byte to UART
-; Registers changed: NONE
-; Flag CARRY not changed.
+;*************************************************
+; A: Data to write
 ;
 WRITE_BYTE:
-    STY     MPHY                ; Save Y Reg
-    STX     MPHX                ; Save X Reg
-    PHA                         ; Save A Reg
-WAIT_FOR_THR_EMPTY:
+    STY     RPHY                     ; Save Y Reg
+    STX     RPHX                     ; Save X Reg
+    STA     RACC                     ; Save A Reg
+WAIT_FOR_THR_EMPTY:	
     LDA     PORT+RLSR           ; Get the Line Status Register
     AND     #THR_EMPTY          ; Check for TX empty
     BEQ     WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
-	PLA
-	STA     PORT+R_TX 			; send the byte
-    PHA
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;DELAY BETWEEN CHAR SENT
-    LDY     #$10
-@YDELAY:
+	LDA     RACC                ;	
+	STA     PORT+R_TX 			; send the byte		
+;;DELAY BETWEEN CHAR SENT
+
     LDA     #$FF
     STA     COUNTER
 @txdelay:
-    DEC     COUNTER
+    DEC     COUNTER    
     BNE     @txdelay
-    DEY
-    BNE     @YDELAY
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    PLA
-    LDX     MPHX                ; Restore X Reg
-    LDY     MPHY                ; Restore Y Reg
-    RTS
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; WRITE_BYTE_WITH_LF: Write byte to UART, IF BYTE IS 0D WRITE 0A(LF) TOO
-; Registers changed: NONE
-; Flag CARRY not changed.
-;
-WRITE_BYTE_WITH_LF:
-    PHA
-    JSR     WRITE_BYTE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;WRITE A LF IF ACC HAS A $0D IN IT
-    PLA
+;;TXdelay:
+;;      LDY   #6                ; Get delay value (clock rate in MHz 2 clock cycles)
+;;MINIDLY:
+;;      LDX   #$68              ; Seed X reg
+;;DELAY_1:
+;;      DEX                     ; Decrement low index
+;;      BNE   DELAY_1           ; Loop back until done
+;;      DEY                     ; Decrease by one
+;;      BNE   MINIDLY           ; Loop until done
+
+    LDA     RACC
     CMP     #$0D
-    BNE     WRITE_BYTE_WITH_ECHO_FIM
+    BNE     FIM
+@WAIT_FOR_THR_EMPTY:	
+    LDA     PORT+RLSR           ; Get the Line Status Register
+    AND     #THR_EMPTY          ; Check for TX empty
+    BEQ     @WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
     LDA     #$0A
-    JSR     WRITE_BYTE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-WRITE_BYTE_WITH_ECHO_FIM:
+	STA     PORT+R_TX 			; send the byte		
+FIM:
+    LDX     RPHX                     ; Restore X Reg
+    LDY     RPHY                     ; Restore Y Reg
+    LDA     RACC                     ; Restore A Reg
     RTS
 
 .segment "BIOS"
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;                        RESET  
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-RESET:        
+;*************************************************************
+;*************************************************************
+; RESET
+;*************************************************************
+;*************************************************************
+
+RESET:
 	            SEI					; No interrupt
 	            CLD					; Set decimal
 	            LDX #$FE 			; Set stack pointer
@@ -278,9 +207,8 @@ NEXT_CHAR:
                 LDA     #'>'
                 JSR     WRITE_BYTE
                 
-                JSR     B_READ_BYTE
+                JSR     READ_BYTE
                 JSR     WRITE_BYTE
-
                 ;CMP     #'S'            ;Show memory address data format: ADDR
                 ;BEQ     TEMP_S
                 CMP     #'D'            ;Dump de memoria format: ADDR:ADDR
@@ -292,7 +220,6 @@ NEXT_CHAR:
                 CMP     #'H'            ;Show help 
                 BEQ     TEMP_H
                 JMP     NEXT_CHAR
-
 TEMP_S:         JMP     DIGITOU_S
 TEMP_D:         JMP     DIGITOU_D
 TEMP_M:         JMP     DIGITOU_M
@@ -463,21 +390,15 @@ DIGITOU_R:
                 LDA     #>MSG4
                 STA     MSGH
                 JSR     SHWMSG
-                JSR     GETLINE
-
-                ;;DEBUG
-                JSR     PRINT_BUFFER
-
-
-                LDY     #$00              
+                JSR     DIGITOU_S
+                LDY     #$00    
                 JSR     CONV_ADDR_TO_HEX
                 LDX     TMP1
                 LDY     TMP2
                 JSR     SWAP_XY
                 STX     ADDR1L
                 STY     ADDR1H
-                ;;DEBUG
-                JSR     PRINT_BUFFER_HEXA
+                ;JSR     PRINT_ADDR_HEXA
                 JMP     (ADDR1L)
                 JMP     NEXT_CHAR
 SWAP_XY:
@@ -486,6 +407,8 @@ SWAP_XY:
                 TAY             ; A 2 Y    
                 LDX     TMP     ; M 2 X
                 RTS
+
+
 ROL_LEFT:
                 JSR     CONV_HEX_1DIG
                 BCC     CONV_HEX_4DIG_FIM
@@ -515,38 +438,22 @@ CONV_HEX_4DIG_FIM:
 ;
 CONV_ADDR_TO_HEX:
                 ;;Dig 4
-                LDA     #'4'
-                JSR     WRITE_BYTE
-                LDA     BIN,Y
-                JSR     WRITE_BYTE
                 LDA     BIN,Y
                 JSR     ROL_LEFT    
                 STA     TMP1
                 ;;Dig 3
-                LDA     #'3'
-                JSR     WRITE_BYTE
                 INY
-                LDA     BIN,Y
-                JSR     WRITE_BYTE
                 LDA     BIN,Y
                 JSR     NO_ROL_RIGHT
                 ORA     TMP1
                 STA     TMP1
                 ;;Dig 2
-                LDA     #'2'
-                JSR     WRITE_BYTE
                 INY
-                LDA     BIN,Y
-                JSR     WRITE_BYTE
                 LDA     BIN,Y
                 JSR     ROL_LEFT
                 STA     TMP
                 ;;Dig 1
-                LDA     #'1'
-                JSR     WRITE_BYTE
                 INY
-                LDA     BIN,Y
-                JSR     WRITE_BYTE
                 LDA     BIN,Y
                 JSR     NO_ROL_RIGHT
                 ORA     TMP
@@ -560,8 +467,6 @@ CONV_ADDR_TO_HEX:
 ;Parameter: A digit to be converted
 ;Return...: A digit converted
 CONV_HEX_1DIG:  
-                ;;DEBUG
-                JSR     WRITE_BYTE
                 CMP     #$30
                 BCC     CONV_HEX_1DIG_FIM
                 CMP     #$3A
@@ -588,7 +493,7 @@ CONV_HEX_1DIG_FIM:
                 RTS
 ;********************************************
 ;Print 4 digits hexadecimal
-PRINT_BUFFER_HEXA:
+PRINT_ADDR_HEXA:
                 LDA     #'['
                 JSR     WRITE_BYTE
                 LDA     ADDR1L
@@ -609,42 +514,24 @@ PRINT_ADDR_HEXA_FIM:
                 JSR     WRITE_BYTE
                 RTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-GETLINE:        LDX     #$00
+GETLINE:        LDY     #$00
 GETLINE1:       JSR     READ_BYTE
                 JSR     WRITE_BYTE
-                STA     BIN,X
-                INX
+                STA     BIN,Y
+                INY
                 CMP     #$0D
                 BNE     GETLINE1     
                 LDA     #$00
-                STA     BIN,X
-                STX     BSZ
-
+                STA     BIN,Y
+                STY     BSZ
                 RTS
-;*************************************************
-;Print buffer
-PRINT_BUFFER:
-                LDA     #<BIN
-                STA     MSGL
-                LDA     #>BIN
-                STA     MSGH
-                JSR     PRBYTE
-                LDA     #$0D
-                JSR     WRITE_BYTE_WITH_LF
-                RTS
-;*************************************************
-SHWMSG:         LDY #$0
-SMSG:           LDA (MSGL),Y
-                BEQ SMDONE
-                JSR WRITE_BYTE_WITH_LF
-                LDA #$FF
-                STA COUNTER
-@txdelay:
-                DEC COUNTER
-                BNE @txdelay
-                INY
-                BNE SMSG
-SMDONE:         RTS
+SHWMSG:          LDY #$0
+SMSG:            LDA (MSGL),Y
+                 BEQ SMDONE
+                 JSR WRITE_BYTE
+                 INY 
+                 BNE SMSG
+SMDONE:          RTS 
 
 PRBYTE:     PHA             ;Save A for LSD.
             LSR
@@ -663,7 +550,6 @@ ECHO:       PHA             ;*Save A
             JSR  WRITE_BYTE
             PLA             ;*Restore A
             RTS             ;*Done, over and out...
-
 ;Incrementa endereco
 INC_ADDR:
             CLC
@@ -712,6 +598,6 @@ OLD_WOZ:
 
 .segment "RESETVEC"
 
-                .word   RESET          ; NMI vector
+                .word   $0F00          ; NMI vector
                 .word   RESET          ; RESET vector
                 .word   $0000          ; IRQ vector
