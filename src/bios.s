@@ -1,12 +1,12 @@
 ;***********************************************************************
 ; SERIAL 16c550 DRIVER
 ;
-; Version.: 0.0.3
+; Version.: 0.0.4
 ;
 ; The verion 0.0.3 does not has the change of read and write bytes to support msbasic.
 ;
 
-.setcpu "65C02"
+.setcpu "6502"
 .debuginfo
 
 .segment "ZEROPAGE"
@@ -29,150 +29,7 @@ COUNTER  = $3F
 
 BIN      = $200          ; Buffer size = 128 bytes
 
-.segment "DRV"
-
-;Uart registers
-PORT = $7800            ;;Uart address
-R_RX = $00    ;;receiver buffer register (read only)
-R_TX = $00    ;;transmitter holding register (write only)
-RDLL = $00    ;;divisor latch LSB (if DLAB=1)
-RDLH = $01    ;;divisor latch HSB (if DLAB=1)
-RIER = $01    ;;interrupt enable register
-RIIR = $02    ;;interrupt identification register
-RFCR = $02    ;;FIFO control register
-RLCR = $03    ;;line control register
-RMCR = $04    ;;modem control register
-RLSR = $05    ;;line status register
-RMSR = $06    ;;modem status register
-RSCR = $07	;;scratch register
-
-; Constants
-.if .not .def(CR)
-	CR  = $0D ; Carriage Return
-.endif	
-.if .not .def(LF)
-	LF  = $0A ; Line feed
-.endif	
-.if .not .def(Q)
-	Q 		= $75
-.endif	
-.if .not .def(T1)
-	T1		= $76
-.endif
-
-DIV_4800_LO   = 24
-DIV_4800_HI   = 0
-DIV_9600_LO   = 12
-DIV_9600_HI   = 0
-DIV_19200_LO  = 6
-DIV_19200_HI  = 0
-DIV_115200_LO = 1
-DIV_115200_HI = 0
-POLLED_MODE   = %00000000
-LCR_8N1       = %00000011
-DLAB          = %10000000
-FIFO_ENABLE   = %00000111 ;%00000111
-THR_EMPTY     = %01100000       ;;
-
-DATA_READY  = %00000001
-OVERRUN_ERR = %00000010
-PARITY_ERR  = %00000100
-FRAMING_ERR = %00001000
-BREAK_INT   = %00010000
-MCR_DTR  = $01  ;dtr output 
-MCR_RTS  = $02  ;rts output 
-MCR_OUT1 = $04  ;output #1  
-MCR_OUT2 = $08  ;output #2  
-MCR_LOOP = $10  ;loop back  
-MCR_AFCE = $20  ;auto flow control enable
-
-
-INITUART:
-    LDA        #DLAB               ;set the divisor latch access bit (DLAB)
-    STA        PORT+RLCR
-    LDA        #DIV_9600_LO        ;store divisor low byte (9600 baud @ 1,8 MHz clock)
-    STA        PORT+RDLL
-    LDA        #DIV_9600_HI        ;store divisor hi byte                               
-    STA        PORT+RDLH
-    LDA        #FIFO_ENABLE        ;enable the UART FIFO
-    STA        PORT+RFCR
-    LDA        #POLLED_MODE	       ;disable all interrupts
-    STA        PORT+RIER
-	LDA        #LCR_8N1            ;set 8 data bits, 1 stop bit, no parity, disable DLAB
-    STA        PORT+RLCR
-    LDA        #MCR_OUT2 + MCR_RTS + MCR_DTR + MCR_AFCE
-    STA        PORT+RMCR 
-    LDA        PORT+R_RX           ;Clear RX buffer      
-    RTS	
-
-
-; A: Data read
-; Returns:  F = C if character read
-;           F = NC if no character read
-; FUNÇÃO BLOCANTE COM CARACTER ECHO
-READ_BYTE:
-	LDA PORT+RLSR 												    ;// check the line status register:
-	AND #(OVERRUN_ERR | PARITY_ERR | FRAMING_ERR | BREAK_INT)   ; check for errors
-	BEQ NO_ERR 												    ;// if no error bits, are set, no error
-	LDA PORT+R_RX
-	JMP READ_BYTE													 
-NO_ERR:
-	LDA PORT+RLSR 												    ;// reload the line status register
-	AND #DATA_READY	
-	BEQ READ_BYTE   											;// if data ready is not set, loop
-	LDA PORT+R_RX 
-;ECHO CHAR
-    ;JSR WRITE_BYTE
-;*********
-	SEC		    										;// otherwise, we have data! Load it. 				    									;// clear the carry flag to indicate no error
-	RTS            	
-										    ;// otherwise, there was an error. Clear the error byte
-
-;*************************************************
-; A: Data to write
-;
-WRITE_BYTE:
-    STY     RPHY                     ; Save Y Reg
-    STX     RPHX                     ; Save X Reg
-    STA     RACC                     ; Save A Reg
-WAIT_FOR_THR_EMPTY:	
-    LDA     PORT+RLSR           ; Get the Line Status Register
-    AND     #THR_EMPTY          ; Check for TX empty
-    BEQ     WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
-	LDA     RACC                ;	
-	STA     PORT+R_TX 			; send the byte		
-;;DELAY BETWEEN CHAR SENT
-
-    LDA     #$FF
-    STA     COUNTER
-@txdelay:
-    DEC     COUNTER    
-    BNE     @txdelay
-
-;;TXdelay:
-;;      LDY   #6                ; Get delay value (clock rate in MHz 2 clock cycles)
-;;MINIDLY:
-;;      LDX   #$68              ; Seed X reg
-;;DELAY_1:
-;;      DEX                     ; Decrement low index
-;;      BNE   DELAY_1           ; Loop back until done
-;;      DEY                     ; Decrease by one
-;;      BNE   MINIDLY           ; Loop until done
-
-    LDA     RACC
-    CMP     #$0D
-    BNE     FIM
-@WAIT_FOR_THR_EMPTY:	
-    LDA     PORT+RLSR           ; Get the Line Status Register
-    AND     #THR_EMPTY          ; Check for TX empty
-    BEQ     @WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
-    LDA     #$0A
-	STA     PORT+R_TX 			; send the byte		
-FIM:
-    LDX     RPHX                     ; Restore X Reg
-    LDY     RPHY                     ; Restore Y Reg
-    LDA     RACC                     ; Restore A Reg
-    RTS
+VERSION:    .byte "0.0.4"
 
 .segment "BIOS"
 
@@ -288,7 +145,9 @@ DIGITOU_D_WORK:
                 ;LDA     (ADDR1L)
                 ;addressing mode of 6502
                 LDY     #$0
-                LDA     (ADDR1L),Y
+                ;to work ADDR1L must be in zeropage
+                ;and register must be Y
+                LDA     (ADDR1L),Y   
                 ;******************
                 JSR     PRBYTE    
                 LDA     #' '
@@ -363,14 +222,6 @@ DIGITOU_M:
                 LDY     #$0
                 STA     (ADDR1L),Y                
 
-                ;LDA     ADDR1H
-                ;JSR     PRBYTE
-                ;LDA     ADDR1L
-                ;JSR     PRBYTE
-                ;LDA     #':'
-                ;JSR     WRITE_BYTE
-                ;LDA     TMP1
-                ;JSR     PRBYTE
 DIGITOU_M_FIM:                
                 JMP     NEXT_CHAR
 
@@ -516,7 +367,7 @@ PRINT_ADDR_HEXA_FIM:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GETLINE:        LDY     #$00
 GETLINE1:       JSR     READ_BYTE
-                JSR     WRITE_BYTE
+                ;JSR     WRITE_BYTE
                 STA     BIN,Y
                 INY
                 CMP     #$0D
@@ -571,7 +422,7 @@ COMP_ADDR_FIM:
             RTS
 
 
-MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - 0.1",CR,0
+MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - Version: ",VERSION,CR,0
 MSG2:            .byte CR,"Input Addr: ",CR,0
 MSG3:            .byte CR,"Dump Mem. Addr: Fmt XXXX>XXXX or XXXX:",CR,0
 MSG4:            .byte CR,"Run program in Addr: Format abcd",CR,0
@@ -595,6 +446,8 @@ OLD_WOZ:
                 STA     MSGH
                 JSR     SHWMSG
                 JMP     NEXT_CHAR
+
+.include "drv16550.s"
 
 .segment "RESETVEC"
 
