@@ -7,7 +7,7 @@
 ;
 
 .setcpu "6502"
-.debuginfo
+
 
 .segment "ZEROPAGE"
 RACC     = $30               ;;: .res 1
@@ -26,6 +26,7 @@ ADDR2H   = $3C          ; Digito 1 D do hexa 0xABCD
 BSZ      = $3D          ; string size in buffer 
 ERRO     = $3E          ; CODIGO DO ERRO
 COUNTER  = $3F
+FLAGECHO = $40          ; This flag must contain 00 to disable character echo
 
 BIN      = $200          ; Buffer size = 128 bytes
 
@@ -51,7 +52,10 @@ RESET:
                 STA     ADDR1H
                 STA     ADDR2L
                 STA     ADDR2H
-
+                STA     FLAGECHO
+                ;;Initialize PIA
+                JSR     INIT8255
+                ;;Initialize ACIA
                 JSR     INITUART
                 LDA     #<MSG1
                 STA     MSGL
@@ -59,29 +63,45 @@ RESET:
                 STA     MSGH
                 JSR     SHWMSG
 NEXT_CHAR:
+                LDX     #$00
+                CPX     FLAGECHO
+                BNE     NO_LF
                 LDA     #$0D
                 JSR     WRITE_BYTE
+NO_LF:
                 LDA     #'>'
-                JSR     WRITE_BYTE
-                
+                JSR     WRITE_BYTE                
                 JSR     READ_BYTE
+
+                LDX     #$00
+                CPX     FLAGECHO
+                BNE     NO_ECHO
                 JSR     WRITE_BYTE
-                ;CMP     #'S'            ;Show memory address data format: ADDR
-                ;BEQ     TEMP_S
+NO_ECHO:
+                CMP     #'*'            ;Turn on/off character echo
+                BEQ     TEMP_AST
                 CMP     #'D'            ;Dump de memoria format: ADDR:ADDR
                 BEQ     TEMP_D
                 CMP     #'M'            ;Put byte into memory address
                 BEQ     TEMP_M
                 CMP     #'R'            ;Run programa na format: ADDR R
                 BEQ     TEMP_R
-                CMP     #'H'            ;Show help 
+                CMP     #'?'            ;Show help 
                 BEQ     TEMP_H
+                CMP     #'L'            ;Show help 
+                BEQ     TEMP_LIGA
+                CMP     #'N'            ;Show help 
+                BEQ     TEMP_DESLIGA
                 JMP     NEXT_CHAR
 TEMP_S:         JMP     DIGITOU_S
 TEMP_D:         JMP     DIGITOU_D
 TEMP_M:         JMP     DIGITOU_M
 TEMP_R:         JMP     DIGITOU_R
 TEMP_H:         JMP     DIGITOU_H
+TEMP_LIGA:      JMP     DIGITOU_PL
+TEMP_DESLIGA:   JMP     DIGITOU_PD
+TEMP_AST:       JMP     DIGITOU_AST     
+      
               
 DIGITOU_S:      
                 STA     LAST_CMD
@@ -252,6 +272,41 @@ DIGITOU_R:
                 ;JSR     PRINT_ADDR_HEXA
                 JMP     (ADDR1L)
                 JMP     NEXT_CHAR
+
+DIGITOU_PL:
+                LDA     #<MSG8
+                STA     MSGL
+                LDA     #>MSG8
+                STA     MSGH
+                JSR     SHWMSG
+                LDA     #$00
+                STA     PORTA
+                STA     PORTB
+                STA     PORTC
+                JMP     NEXT_CHAR
+DIGITOU_PD:
+                LDA     #<MSG9
+                STA     MSGL
+                LDA     #>MSG9
+                STA     MSGH
+                JSR     SHWMSG 
+                LDA     #$FF
+                STA     PORTA
+                STA     PORTB
+                STA     PORTC
+                JMP     NEXT_CHAR    
+DIGITOU_AST:
+                LDA     #<MSG10
+                STA     MSGL
+                LDA     #>MSG10
+                STA     MSGH
+                JSR     SHWMSG 
+                LDA     FLAGECHO
+                EOR     #$FF
+                STA     FLAGECHO
+                JMP     NEXT_CHAR    
+
+
 SWAP_XY:
                 STY     TMP     ; Y 2 M
                 TXA             ; X 2 A
@@ -435,7 +490,13 @@ HELP:            .byte CR,"Help BIOSMON v 0.1",CR,LF
                  .byte "         D - Dump memory",CR
                  .byte "         M - Poke",CR
                  .byte "         R - Run program",CR
-                 .byte "         H - Show help",CR,LF,0
+                 .byte "         L - Led ON",CR
+                 .byte "         N - Led OFF",CR
+                 .byte "         * - Turn on/off character echo",CR
+                 .byte "         ? - Show help",CR,LF,0
+MSG8:            .byte "         L - Led ON",CR,LF,0
+MSG9:            .byte "         N - Led OFF",CR,LF,0
+MSG10:           .byte "         * - Turn on/off character echo",CR,0
 
 ;Used just for test of run cmd. 
 
@@ -447,6 +508,7 @@ OLD_WOZ:
                 JSR     SHWMSG
                 JMP     NEXT_CHAR
 
+.include "drv8255.s"
 .include "drv16550.s"
 
 .segment "RESETVEC"

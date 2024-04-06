@@ -1,7 +1,7 @@
 .segment "DRV"
 
 ;Uart registers
-PORT = $7800            ;;Uart address
+PORT = $B000            ;;Uart address
 R_RX = $00    ;;receiver buffer register (read only)
 R_TX = $00    ;;transmitter holding register (write only)
 RDLL = $00    ;;divisor latch LSB (if DLAB=1)

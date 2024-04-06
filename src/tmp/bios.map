@@ -7,7 +7,7 @@ bios.o:
     DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
     ZEROPAGE          Offs=000000  Size=000005  Align=00001  Fill=0000
     NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
-    BIOS              Offs=000000  Size=0003D0  Align=00001  Fill=0000
+    BIOS              Offs=000000  Size=0004E9  Align=00001  Fill=0000
     DRV               Offs=000000  Size=00009E  Align=00001  Fill=0000
     RESETVEC          Offs=000000  Size=000006  Align=00001  Fill=0000
 
@@ -22,8 +22,8 @@ NULL                  000000  000000  000000  00001
 RODATA                000000  000000  000000  00001
 ZEROPAGE              000000  000004  000005  00001
 CODE                  008000  008000  000000  00001
-DRV                   008000  00809D  00009E  00001
-BIOS                  00FB00  00FECF  0003D0  00001
+DRV                   00FA00  00FA9D  00009E  00001
+BIOS                  00FB00  00FFE8  0004E9  00001
 RESETVEC              00FFFA  00FFFF  000006  00001
 
 
