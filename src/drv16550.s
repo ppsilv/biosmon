@@ -22,12 +22,6 @@ RSCR = $07	;;scratch register
 .if .not .def(LF)
 	LF  = $0A ; Line feed
 .endif	
-.if .not .def(Q)
-	Q 		= $75
-.endif	
-.if .not .def(T1)
-	T1		= $76
-.endif
 
 DIV_4800_LO   = 24
 DIV_4800_HI   = 0
