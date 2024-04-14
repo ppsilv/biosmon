@@ -5,9 +5,10 @@ bios.o:
     RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
     BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
     DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
-    ZEROPAGE          Offs=000000  Size=000011  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000026  Align=00001  Fill=0000
     NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
-    BIOS              Offs=000000  Size=000617  Align=00001  Fill=0000
+    BIOS              Offs=000000  Size=0008FE  Align=00001  Fill=0000
+    DISASM            Offs=000000  Size=000679  Align=00001  Fill=0000
     DRV               Offs=000000  Size=00009E  Align=00001  Fill=0000
     RESETVEC          Offs=000000  Size=000006  Align=00001  Fill=0000
 
@@ -20,23 +21,29 @@ BSS                   000000  000000  000000  00001
 DATA                  000000  000000  000000  00001
 NULL                  000000  000000  000000  00001
 RODATA                000000  000000  000000  00001
-ZEROPAGE              000000  000010  000011  00001
+ZEROPAGE              000000  000025  000026  00001
 CODE                  008000  008000  000000  00001
+DISASM                00A000  00A678  000679  00001
 DRV                   00F000  00F09D  00009E  00001
-BIOS                  00F100  00F716  000617  00001
+BIOS                  00F100  00F9FD  0008FE  00001
 RESETVEC              00FFFA  00FFFF  000006  00001
 
 
 Exports list by name:
 ---------------------
-
+MNEMONICS                 00A34C  LA    OPCODES1                  00A431  LA    
+OPCODES2                  00A531  LA    
 
 
 Exports list by value:
 ----------------------
-
+MNEMONICS                 00A34C  LA    OPCODES1                  00A431  LA    
+OPCODES2                  00A531  LA    
 
 
 Imports list:
 -------------
+MNEMONICS (bios.o):
+OPCODES1 (bios.o):
+OPCODES2 (bios.o):
 

@@ -76,22 +76,22 @@ PRHIGH_NIBBLE:
             RTS             ;*Done, over and out...
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; The same as PRINT_HEXA
-;PRBYTE:     PHA             ;Save A for LSD.
-;            LSR
-;            LSR
-;            LSR             ;MSD to LSD position.
-;            LSR
-;            JSR PRHEX       ;Output hex digit.
-;            PLA             ;Restore A.
-;PRHEX:      AND #$0F        ;Mask LSD for hex print.
-;            ORA #$B0        ;Add "0".
-;            CMP #$BA        ;Digit?
-;            BCC ECHO        ;Yes, output it.
-;            ADC #$06        ;Add offset for letter.
-;ECHO:       
-;            AND #$7F        ;*Change to "standard ASCII"
-;            JSR  WRITE_BYTE
-;            RTS             ;*Done, over and out...
+PRBYTE:     PHA             ;Save A for LSD.
+            LSR
+            LSR
+            LSR             ;MSD to LSD position.
+            LSR
+            JSR PRHEX       ;Output hex digit.
+            PLA             ;Restore A.
+PRHEX:      AND #$0F        ;Mask LSD for hex print.
+            ORA #$B0        ;Add "0".
+            CMP #$BA        ;Digit?
+            BCC ECHO        ;Yes, output it.
+            ADC #$06        ;Add offset for letter.
+ECHO:       
+            AND #$7F        ;*Change to "standard ASCII"
+            JSR  WRITE_BYTE
+            RTS             ;*Done, over and out...
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Copy memory block with size below 256
 ; Inputs: BASE = Address origin of copy
@@ -344,6 +344,55 @@ FORMAT_ERROR:
             JMP     SYNTAX_ERROR 
 FORMAT_FIM:
             JMP     NEXT_CHAR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+GET_ADDRESS_HEX:
+            JSR     GET_ADDRESS
+
+            ;First byte    
+            LDY     #$00
+            LDA     BIN,Y
+            STA     RPHX
+            LDY     #$01
+            LDA     BIN,Y
+            STA     RPHY
+            JSR     CONV_ASCII_2_HEX
+            STA     ADDR1H
+            ;Second byte    
+            LDY     #$02
+            LDA     BIN,Y
+            STA     RPHX
+            LDY     #$03
+            LDA     BIN,Y
+            STA     RPHY
+            JSR     CONV_ASCII_2_HEX
+            STA     ADDR1L
+            RTS       
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Verify app.
+; $FE = disasm Disassembler for 6502
+; $FD = basic  Basic Interpreter
+; $FF,$A5,$5A,$FE                 
+VERIFY_APP:
+           LDA  $A000
+           CMP  #$FF
+           BNE  VERIFY_APP_FIM
+           LDA  $A001
+           CMP  #$A5
+           BNE  VERIFY_APP_FIM
+           LDA  $A002
+           CMP  #$5A
+           BNE  VERIFY_APP_FIM
+           LDA  $A003
+           CMP  #$FE
+           BNE  VERIFY_APP_FIM
+           LDA  #$FE           
+           STA  APP_TABLE     
+           LDA  #$A0
+           STA  APP_TABLE + 1     
+VERIFY_APP_FIM:
+           RTS     
+                      
 ;;********************************************
 ;;Print 4 digits hexadecimal
 ;PRINT_ADDR_HEXA:

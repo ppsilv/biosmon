@@ -1,9 +1,13 @@
 ;****************************************************************************
 ;----------------------------------------------------------------------------
-; Monitor program source code for 6502 Microprocessor Kit
-; Written by Paulo Da Silva(pgordao), ppsilv@gmail.com
-; Copyright (c) 2024
+; Open Software Ltda Copyright (C) 2024.
+; 
+; Monitor program source code for 6502 Microprocessor Kit for Spartan HMC56
+; Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.
+; 
+; 
 ; Serial 16c550 driver
+;****************************************************************************
 ;
 ; Version.: 0.0.5
 ;
@@ -37,7 +41,7 @@ BSZ     : .res 1  ;;= $3D          ; string size in buffer
 ERRO    : .res 1  ;;= $3E          ; CODIGO DO ERRO
 COUNTER : .res 1  ;;= $3F
 FLAGECHO: .res 1  ;;= $40          ; This flag must contain 00 to disable character echo
-
+APP_TABLE:.res 4  ;;4 bytes, 2 bytes for each high application's address byte format App. code, high address bytes
 
 .DEFINE VERSION "0.0.5"
 
@@ -66,13 +70,31 @@ RESET:
                 STA     ADDR2L
                 STA     ADDR2H
                 STA     FLAGECHO
+                STA     APP_TABLE
+                STA     APP_TABLE+1
+                STA     APP_TABLE+2
+                STA     APP_TABLE+3
+                STA     APP_TABLE+4
+                STA     APP_TABLE+5
+                STA     APP_TABLE+6
+                STA     APP_TABLE+7
                 ;;Initialize PIA
                 ;;JSR     INIT8255
                 ;;Initialize ACIA
                 JSR     INITUART
-                LDA     #<MSG1
+                LDA     #<MSGA1
                 STA     MSGL
-                LDA     #>MSG1
+                LDA     #>MSGA1
+                STA     MSGH
+                JSR     SHWMSG
+                LDA     #<MSGB1
+                STA     MSGL
+                LDA     #>MSGB1
+                STA     MSGH
+                JSR     SHWMSG
+                LDA     #<MSGC1
+                STA     MSGL
+                LDA     #>MSGC1
                 STA     MSGH
                 JSR     SHWMSG
                 ;;Turn off flag echo
@@ -95,8 +117,12 @@ NEXT_CHAR:
 NO_ECHO:
                 CMP     #'*'            ;Turn on/off character echo
                 BEQ     TEMP_AST
-                CMP     #'B'            ;Copy memory block from source to dest
+                CMP     #'X'            ;Execute disassembler
+                BEQ     TEMP_X
+                CMP     #'B'            ;Execute basic compiler
                 BEQ     TEMP_B
+                CMP     #'C'            ;Copy memory block from source to dest
+                BEQ     TEMP_C
                 CMP     #'D'            ;Dump memory block from source to dest
                 BEQ     TEMP_D
                 CMP     #'F'            ;Fill memory block with a value
@@ -110,13 +136,15 @@ NO_ECHO:
                 CMP     #'?'            ;Show help 
                 BEQ     TEMP_H
                 JMP     NEXT_CHAR
-TEMP_B:         JMP     CMD_CP_BLOCK
+TEMP_B:         JMP     CMD_BASIC
+TEMP_C:         JMP     CMD_CP_BLOCK
 TEMP_D:         JMP     CMD_DUMP
 TEMP_F:         JMP     CMD_FILL
 TEMP_M:         JMP     CMD_POKE
 TEMP_P:         JMP     CMD_PEEK
 TEMP_R:         JMP     CMD_RUN
 TEMP_H:         JMP     CMD_HELP
+TEMP_X:         JMP     CMD_DIS
 TEMP_AST:       JMP     DIGITOU_AST     
       
               
@@ -128,6 +156,20 @@ TEMP_AST:       JMP     DIGITOU_AST
 .include "cmd_peek.s"
 .include "cmd_poke.s"
 .include "cmd_run.s"
+
+CMD_BASIC:
+                LDA     APP_TABLE 
+                CMP     #$FD
+                BNE     TEMP_BAS 
+                ;LDA     APP
+                ;JSR     BASIC
+TEMP_BAS:      
+                JMP     NEXT_CHAR             
+CMD_DIS:
+                LDA     APP_TABLE     
+                CMP     #$FE
+                ;BEQ     TEMP_DIS 
+                JMP     NEXT_CHAR
 
 SYNTAX_ERROR:
                 LDA     #<MSG9
@@ -244,7 +286,20 @@ CMD_HELP:
 ;                CLC
 ;                RTS
 
-MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - Version: ",VERSION,CR,0
+; Open Software Ltda Copyright (C) 2024.
+; 
+; Monitor program source code for 6502 Microprocessor Kit for Spartan HMC56
+; Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.
+; 
+
+MSGA1:           .byte CR,LF,"***************************************************************************",CR                 
+                 .byte "*                                                                         *",CR
+                 .byte "* Open Software Ltda Copyright (C) 2024.                                  *",CR,0
+MSGB1:           .byte "*                                                                         *",CR
+                 .byte "* PDSILVA - BIOSMON 2024 - Version: ",VERSION,"                                 *",CR
+                 .byte "* Monitor program for 6502 Microprocessor Kit Spartan HMC56               *",CR,0
+MSGC1:           .byte "* Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.*",CR
+                 .byte "***************************************************************************",CR,LF,0
 MSG2:            .byte "Input data: ",CR,0
 MSG3:            .byte LF,"Dump Mem. Addr: Fmt XXXX.XXXX or XXXX:",CR,0
 MSG4:            .byte "Run program in Addr: Format abcd",CR,0
@@ -260,7 +315,7 @@ MSG11:           .byte LF,"Fill block:  AddrFrom AddrTo data(XXXX.XXXX:XX)",CR,0
 HELP:            .byte CR,"Help for biosmon Version: "
                  .byte VERSION,CR,LF
                  .byte "Commands:",CR
-                 .byte "         B - memory Block copy",CR
+                 .byte "         C - memory Block copy",CR
                  .byte "         D - Dump memory",CR
                  .byte "         F - Fill memory",CR,0
 HELP1:           .byte "         M - Memory poke",CR
@@ -279,6 +334,7 @@ OLD_WOZ:
                 JSR     SHWMSG
                 JMP     NEXT_CHAR
 
+.include "disasm.s"
 .include "drv16550.s"
 
 .segment "RESETVEC"
@@ -286,3 +342,4 @@ OLD_WOZ:
                 .word   $0F00          ; NMI vector
                 .word   RESET          ; RESET vector
                 .word   $0000          ; IRQ vector
+.end
