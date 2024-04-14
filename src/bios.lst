@@ -43,10 +43,9 @@ Current file: bios.s
 000010r 1  xx           FLAGECHO: .res 1  ;;= $40          ; This flag must contain 00 to disable character echo
 000011r 1               
 000011r 1               
-000011r 1  30 2E 30 2E  VERSION:    .byte "0.0.5"
-000015r 1  35           
-000016r 1               
-000016r 1               .segment "BIOS"
+000011r 1               .DEFINE VERSION "0.0.5"
+000011r 1               
+000011r 1               .segment "BIOS"
 000000r 1               BIN      = $200          ; Buffer size = 128 bytes
 000000r 1               ERR01    = $01          ; Conversion error in CONV_HEX_4DIG_FIM
 000000r 1               ERR02    = $02          ; Syntax erro in cmd copy memory block.
@@ -820,179 +819,186 @@ Current file: bios.s
 0003A4r 1  A9 rr                        LDA     #>HELP
 0003A6r 1  85 rr                        STA     MSGH
 0003A8r 1  20 rr rr                     JSR     SHWMSG
-0003ABr 1  4C rr rr                     JMP     NEXT_CHAR
-0003AEr 1               
-0003AEr 1               
-0003AEr 1               
-0003AEr 1               ;;ROL_LEFT_SAFE:
-0003AEr 1               ;;                JSR     HEX_2_ASC_SAFE
-0003AEr 1               ;;                BCC     ROL_FIM
-0003AEr 1               ;;                ROL
-0003AEr 1               ;;                ROL
-0003AEr 1               ;;                ROL
-0003AEr 1               ;;                ROL
-0003AEr 1               ;;                AND     #$F0
-0003AEr 1               ;;                SEC
-0003AEr 1               ;;                RTS
-0003AEr 1               ;;GET_DIG_RIGHT_SAFE:
-0003AEr 1               ;;                JSR     HEX_2_ASC_SAFE
-0003AEr 1               ;;                BCC     ROL_FIM
-0003AEr 1               ;;                AND     #$0F
-0003AEr 1               ;;                SEC
-0003AEr 1               ;;                RTS
-0003AEr 1               ;;
-0003AEr 1               ;;ROL_FIM:
-0003AEr 1               ;;                LDA     #<MSG6
-0003AEr 1               ;;                STA     MSGL
-0003AEr 1               ;;                LDA     #>MSG6
-0003AEr 1               ;;                STA     MSGH
-0003AEr 1               ;;                JSR     SHWMSG
-0003AEr 1               ;;                LDA     ERR01
-0003AEr 1               ;;                STA     ERRO
-0003AEr 1               ;;                CLC
-0003AEr 1               ;;                RTS
-0003AEr 1               ;;
-0003AEr 1               ;;
-0003AEr 1               ;;CONV_ADDR_TO_HEX_APAGARD_METODO_ANTIGO:
-0003AEr 1               ;;                ;;Dig 4
-0003AEr 1               ;;                LDA     BIN,Y
-0003AEr 1               ;;                JSR     ROL_LEFT
-0003AEr 1               ;;                STA     TMP
-0003AEr 1               ;;                ;;Dig 3
-0003AEr 1               ;;                INY
-0003AEr 1               ;;                LDA     BIN,Y
-0003AEr 1               ;;                JSR     GET_DIG_RIGHT
-0003AEr 1               ;;                ORA     TMP
-0003AEr 1               ;;                STA     TMP1
-0003AEr 1               ;;                JSR     PRINT_PAR1
-0003AEr 1               ;;                JSR     PRBYTE
-0003AEr 1               ;;                ;;Dig 2
-0003AEr 1               ;;                INY
-0003AEr 1               ;;                LDA     BIN,Y
-0003AEr 1               ;;                JSR     ROL_LEFT
-0003AEr 1               ;;                STA     TMP
-0003AEr 1               ;;                ;;Dig 1
-0003AEr 1               ;;                INY
-0003AEr 1               ;;                LDA     BIN,Y
-0003AEr 1               ;;                JSR     GET_DIG_RIGHT
-0003AEr 1               ;;                ORA     TMP
-0003AEr 1               ;;                STA     TMP2
-0003AEr 1               ;;                JSR     PRBYTE
-0003AEr 1               ;;                JSR     PRINT_PAR2
-0003AEr 1               ;;
-0003AEr 1               ;;                SEC
-0003AEr 1               ;;                RTS
-0003AEr 1               ;;
-0003AEr 1               ;;;*******************************************
-0003AEr 1               ;HEX_2_ASC_SAFE:
-0003AEr 1               ;Parameter: A digit to be converted
-0003AEr 1               ;Return...: A digit converted
-0003AEr 1               ;
-0003AEr 1               ;HEX_2_ASC_SAFE:
-0003AEr 1               ;;CONV_HEX_1DIG:
-0003AEr 1               ;                CMP     #$30
-0003AEr 1               ;                BCC     CONV_HEX_1DIG_FIM
-0003AEr 1               ;                CMP     #$3A
-0003AEr 1               ;                BCC     DIG_0_A_9
-0003AEr 1               ;                CMP     #$41
-0003AEr 1               ;                BCS     DIG_A_TO_Z
-0003AEr 1               ;                ;CARACTER PODE SER UM DESSES : ; < = > ? @
-0003AEr 1               ;                CLC     ;CLEAR CARRY FLAG DIG NOT CONVERTED
-0003AEr 1               ;                RTS
-0003AEr 1               ;DIG_A_TO_Z:
-0003AEr 1               ;                CMP     #$47
-0003AEr 1               ;                BCS     CONV_HEX_1DIG_FIM
-0003AEr 1               ;                SEC     ;Flag carry seted does not borrow
-0003AEr 1               ;                SBC     #$37
-0003AEr 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
-0003AEr 1               ;                RTS
-0003AEr 1               ;DIG_0_A_9:
-0003AEr 1               ;                SEC      ;Flag carry seted does not borrow
-0003AEr 1               ;                SBC     #$30
-0003AEr 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
-0003AEr 1               ;                RTS
-0003AEr 1               ;CONV_HEX_1DIG_FIM:
-0003AEr 1               ;                CLC
-0003AEr 1               ;                RTS
-0003AEr 1               
-0003AEr 1  0D 0A 50 44  MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - Version: ",VERSION,CR,0
-0003B2r 1  53 49 4C 56  
-0003B6r 1  41 20 2D 20  
-0003D5r 1  49 6E 70 75  MSG2:            .byte "Input data: ",CR,0
-0003D9r 1  74 20 64 61  
-0003DDr 1  74 61 3A 20  
-0003E3r 1  0A 44 75 6D  MSG3:            .byte LF,"Dump Mem. Addr: Fmt XXXX.XXXX or XXXX:",CR,0
-0003E7r 1  70 20 4D 65  
-0003EBr 1  6D 2E 20 41  
-00040Cr 1  52 75 6E 20  MSG4:            .byte "Run program in Addr: Format abcd",CR,0
-000410r 1  70 72 6F 67  
-000414r 1  72 61 6D 20  
-00042Er 1  45 58 45 43  MSG5:            .byte "EXECUTADO",CR,0
-000432r 1  55 54 41 44  
-000436r 1  4F 0D 00     
-000439r 1  48 65 78 20  MSG6:            .byte "Hex conv. error",CR,0
-00043Dr 1  63 6F 6E 76  
-000441r 1  2E 20 65 72  
-00044Ar 1  0A 50 6F 6B  MSG7:            .byte LF,"Poke: Fmt addr:dt",CR,0
-00044Er 1  65 3A 20 46  
-000452r 1  6D 74 20 61  
-00045Er 1  0A 43 6F 70  MSG8:            .byte LF,"Copy block:  AddrFrom AddrTo Lenght(XXXX.XXXX:XXXX)",CR,0
-000462r 1  79 20 62 6C  
-000466r 1  6F 63 6B 3A  
-000494r 1  53 79 6E 74  MSG9:            .byte "Syntax error",CR,0
-000498r 1  61 78 20 65  
-00049Cr 1  72 72 6F 72  
-0004A2r 1  54 75 72 6E  MSG10:           .byte "Turn on/off character echo",CR,0
-0004A6r 1  20 6F 6E 2F  
-0004AAr 1  6F 66 66 20  
-0004BEr 1  0A 46 69 6C  MSG11:           .byte LF,"Fill block:  AddrFrom AddrTo data(XXXX.XXXX:XX)",CR,0
-0004C2r 1  6C 20 62 6C  
-0004C6r 1  6F 63 6B 3A  
-0004F0r 1               
-0004F0r 1               ;;Help
-0004F0r 1  0D 48 65 6C  HELP:            .byte CR,"Help for biosmon Version: ",VERSION,CR,LF
-0004F4r 1  70 20 66 6F  
-0004F8r 1  72 20 62 69  
-00050Er 1  43 6F 6D 6D                   .byte "Commands:",CR
-000512r 1  61 6E 64 73  
-000516r 1  3A 0D        
-000518r 1  20 20 20 20                   .byte "         B - memory Block copy",CR
-00051Cr 1  20 20 20 20  
-000520r 1  20 42 20 2D  
-000537r 1  20 20 20 20                   .byte "         D - Dump memory",CR
-00053Br 1  20 20 20 20  
-00053Fr 1  20 44 20 2D  
-000550r 1  20 20 20 20                   .byte "         F - Fill memory",CR
-000554r 1  20 20 20 20  
-000558r 1  20 46 20 2D  
-000569r 1  20 20 20 20                   .byte "         M - Memory poke",CR
-00056Dr 1  20 20 20 20  
-000571r 1  20 4D 20 2D  
-000582r 1  20 20 20 20                   .byte "         P - Peek memory",CR
-000586r 1  20 20 20 20  
-00058Ar 1  20 50 20 2D  
-00059Br 1  20 20 20 20                   .byte "         R - Run program",CR
-00059Fr 1  20 20 20 20  
-0005A3r 1  20 52 20 2D  
-0005B4r 1  20 20 20 20                   .byte "         * - Turn on/off character echo",CR
-0005B8r 1  20 20 20 20  
-0005BCr 1  20 2A 20 2D  
-0005DCr 1  20 20 20 20                   .byte "         ? - Show help",CR,LF,0
-0005E0r 1  20 20 20 20  
-0005E4r 1  20 3F 20 2D  
-0005F5r 1               
-0005F5r 1               ;Used just for test of run cmd.
-0005F5r 1               
-0005F5r 1               OLD_WOZ:
-0005F5r 1  A9 rr                        LDA     #<MSG5
-0005F7r 1  85 rr                        STA     MSGL
-0005F9r 1  A9 rr                        LDA     #>MSG5
-0005FBr 1  85 rr                        STA     MSGH
-0005FDr 1  20 rr rr                     JSR     SHWMSG
-000600r 1  4C rr rr                     JMP     NEXT_CHAR
-000603r 1               
-000603r 1               .include "drv16550.s"
-000603r 2               .segment "DRV"
+0003ABr 1  A9 rr                        LDA     #<HELP1
+0003ADr 1  85 rr                        STA     MSGL
+0003AFr 1  A9 rr                        LDA     #>HELP1
+0003B1r 1  85 rr                        STA     MSGH
+0003B3r 1  20 rr rr                     JSR     SHWMSG
+0003B6r 1  4C rr rr                     JMP     NEXT_CHAR
+0003B9r 1               
+0003B9r 1               
+0003B9r 1               
+0003B9r 1               ;;ROL_LEFT_SAFE:
+0003B9r 1               ;;                JSR     HEX_2_ASC_SAFE
+0003B9r 1               ;;                BCC     ROL_FIM
+0003B9r 1               ;;                ROL
+0003B9r 1               ;;                ROL
+0003B9r 1               ;;                ROL
+0003B9r 1               ;;                ROL
+0003B9r 1               ;;                AND     #$F0
+0003B9r 1               ;;                SEC
+0003B9r 1               ;;                RTS
+0003B9r 1               ;;GET_DIG_RIGHT_SAFE:
+0003B9r 1               ;;                JSR     HEX_2_ASC_SAFE
+0003B9r 1               ;;                BCC     ROL_FIM
+0003B9r 1               ;;                AND     #$0F
+0003B9r 1               ;;                SEC
+0003B9r 1               ;;                RTS
+0003B9r 1               ;;
+0003B9r 1               ;;ROL_FIM:
+0003B9r 1               ;;                LDA     #<MSG6
+0003B9r 1               ;;                STA     MSGL
+0003B9r 1               ;;                LDA     #>MSG6
+0003B9r 1               ;;                STA     MSGH
+0003B9r 1               ;;                JSR     SHWMSG
+0003B9r 1               ;;                LDA     ERR01
+0003B9r 1               ;;                STA     ERRO
+0003B9r 1               ;;                CLC
+0003B9r 1               ;;                RTS
+0003B9r 1               ;;
+0003B9r 1               ;;
+0003B9r 1               ;;CONV_ADDR_TO_HEX_APAGARD_METODO_ANTIGO:
+0003B9r 1               ;;                ;;Dig 4
+0003B9r 1               ;;                LDA     BIN,Y
+0003B9r 1               ;;                JSR     ROL_LEFT
+0003B9r 1               ;;                STA     TMP
+0003B9r 1               ;;                ;;Dig 3
+0003B9r 1               ;;                INY
+0003B9r 1               ;;                LDA     BIN,Y
+0003B9r 1               ;;                JSR     GET_DIG_RIGHT
+0003B9r 1               ;;                ORA     TMP
+0003B9r 1               ;;                STA     TMP1
+0003B9r 1               ;;                JSR     PRINT_PAR1
+0003B9r 1               ;;                JSR     PRBYTE
+0003B9r 1               ;;                ;;Dig 2
+0003B9r 1               ;;                INY
+0003B9r 1               ;;                LDA     BIN,Y
+0003B9r 1               ;;                JSR     ROL_LEFT
+0003B9r 1               ;;                STA     TMP
+0003B9r 1               ;;                ;;Dig 1
+0003B9r 1               ;;                INY
+0003B9r 1               ;;                LDA     BIN,Y
+0003B9r 1               ;;                JSR     GET_DIG_RIGHT
+0003B9r 1               ;;                ORA     TMP
+0003B9r 1               ;;                STA     TMP2
+0003B9r 1               ;;                JSR     PRBYTE
+0003B9r 1               ;;                JSR     PRINT_PAR2
+0003B9r 1               ;;
+0003B9r 1               ;;                SEC
+0003B9r 1               ;;                RTS
+0003B9r 1               ;;
+0003B9r 1               ;;;*******************************************
+0003B9r 1               ;HEX_2_ASC_SAFE:
+0003B9r 1               ;Parameter: A digit to be converted
+0003B9r 1               ;Return...: A digit converted
+0003B9r 1               ;
+0003B9r 1               ;HEX_2_ASC_SAFE:
+0003B9r 1               ;;CONV_HEX_1DIG:
+0003B9r 1               ;                CMP     #$30
+0003B9r 1               ;                BCC     CONV_HEX_1DIG_FIM
+0003B9r 1               ;                CMP     #$3A
+0003B9r 1               ;                BCC     DIG_0_A_9
+0003B9r 1               ;                CMP     #$41
+0003B9r 1               ;                BCS     DIG_A_TO_Z
+0003B9r 1               ;                ;CARACTER PODE SER UM DESSES : ; < = > ? @
+0003B9r 1               ;                CLC     ;CLEAR CARRY FLAG DIG NOT CONVERTED
+0003B9r 1               ;                RTS
+0003B9r 1               ;DIG_A_TO_Z:
+0003B9r 1               ;                CMP     #$47
+0003B9r 1               ;                BCS     CONV_HEX_1DIG_FIM
+0003B9r 1               ;                SEC     ;Flag carry seted does not borrow
+0003B9r 1               ;                SBC     #$37
+0003B9r 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
+0003B9r 1               ;                RTS
+0003B9r 1               ;DIG_0_A_9:
+0003B9r 1               ;                SEC      ;Flag carry seted does not borrow
+0003B9r 1               ;                SBC     #$30
+0003B9r 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
+0003B9r 1               ;                RTS
+0003B9r 1               ;CONV_HEX_1DIG_FIM:
+0003B9r 1               ;                CLC
+0003B9r 1               ;                RTS
+0003B9r 1               
+0003B9r 1  0D 0A 50 44  MSG1:            .byte CR,LF,"PDSILVA - BIOSMON 2024 - Version: ",VERSION,CR,0
+0003BDr 1  53 49 4C 56  
+0003C1r 1  41 20 2D 20  
+0003E4r 1  49 6E 70 75  MSG2:            .byte "Input data: ",CR,0
+0003E8r 1  74 20 64 61  
+0003ECr 1  74 61 3A 20  
+0003F2r 1  0A 44 75 6D  MSG3:            .byte LF,"Dump Mem. Addr: Fmt XXXX.XXXX or XXXX:",CR,0
+0003F6r 1  70 20 4D 65  
+0003FAr 1  6D 2E 20 41  
+00041Br 1  52 75 6E 20  MSG4:            .byte "Run program in Addr: Format abcd",CR,0
+00041Fr 1  70 72 6F 67  
+000423r 1  72 61 6D 20  
+00043Dr 1  45 58 45 43  MSG5:            .byte "EXECUTADO",CR,0
+000441r 1  55 54 41 44  
+000445r 1  4F 0D 00     
+000448r 1  48 65 78 20  MSG6:            .byte "Hex conv. error",CR,0
+00044Cr 1  63 6F 6E 76  
+000450r 1  2E 20 65 72  
+000459r 1  0A 50 6F 6B  MSG7:            .byte LF,"Poke: Fmt addr:dt",CR,0
+00045Dr 1  65 3A 20 46  
+000461r 1  6D 74 20 61  
+00046Dr 1  0A 43 6F 70  MSG8:            .byte LF,"Copy block:  AddrFrom AddrTo Lenght(XXXX.XXXX:XXXX)",CR,0
+000471r 1  79 20 62 6C  
+000475r 1  6F 63 6B 3A  
+0004A3r 1  53 79 6E 74  MSG9:            .byte "Syntax error",CR,0
+0004A7r 1  61 78 20 65  
+0004ABr 1  72 72 6F 72  
+0004B1r 1  54 75 72 6E  MSG10:           .byte "Turn on/off character echo",CR,0
+0004B5r 1  20 6F 6E 2F  
+0004B9r 1  6F 66 66 20  
+0004CDr 1  0A 46 69 6C  MSG11:           .byte LF,"Fill block:  AddrFrom AddrTo data(XXXX.XXXX:XX)",CR,0
+0004D1r 1  6C 20 62 6C  
+0004D5r 1  6F 63 6B 3A  
+0004FFr 1               
+0004FFr 1               ;;Help
+0004FFr 1  0D 48 65 6C  HELP:            .byte CR,"Help for biosmon Version: "
+000503r 1  70 20 66 6F  
+000507r 1  72 20 62 69  
+00051Ar 1  30 2E 30 2E                   .byte VERSION,CR,LF
+00051Er 1  35 0D 0A     
+000521r 1  43 6F 6D 6D                   .byte "Commands:",CR
+000525r 1  61 6E 64 73  
+000529r 1  3A 0D        
+00052Br 1  20 20 20 20                   .byte "         B - memory Block copy",CR
+00052Fr 1  20 20 20 20  
+000533r 1  20 42 20 2D  
+00054Ar 1  20 20 20 20                   .byte "         D - Dump memory",CR
+00054Er 1  20 20 20 20  
+000552r 1  20 44 20 2D  
+000563r 1  20 20 20 20                   .byte "         F - Fill memory",CR,0
+000567r 1  20 20 20 20  
+00056Br 1  20 46 20 2D  
+00057Dr 1  20 20 20 20  HELP1:           .byte "         M - Memory poke",CR
+000581r 1  20 20 20 20  
+000585r 1  20 4D 20 2D  
+000596r 1  20 20 20 20                   .byte "         P - Peek memory",CR
+00059Ar 1  20 20 20 20  
+00059Er 1  20 50 20 2D  
+0005AFr 1  20 20 20 20                   .byte "         R - Run program",CR
+0005B3r 1  20 20 20 20  
+0005B7r 1  20 52 20 2D  
+0005C8r 1  20 20 20 20                   .byte "         * - Turn on/off character echo",CR
+0005CCr 1  20 20 20 20  
+0005D0r 1  20 2A 20 2D  
+0005F0r 1  20 20 20 20                   .byte "         ? - Show help",CR,LF,0
+0005F4r 1  20 20 20 20  
+0005F8r 1  20 3F 20 2D  
+000609r 1               
+000609r 1               ;Used just for test of run cmd.
+000609r 1               
+000609r 1               OLD_WOZ:
+000609r 1  A9 rr                        LDA     #<MSG5
+00060Br 1  85 rr                        STA     MSGL
+00060Dr 1  A9 rr                        LDA     #>MSG5
+00060Fr 1  85 rr                        STA     MSGH
+000611r 1  20 rr rr                     JSR     SHWMSG
+000614r 1  4C rr rr                     JMP     NEXT_CHAR
+000617r 1               
+000617r 1               .include "drv16550.s"
+000617r 2               .segment "DRV"
 000000r 2               
 000000r 2               ;Uart registers
 000000r 2               PORT = $B000            ;;Uart address

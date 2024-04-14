@@ -39,7 +39,7 @@ COUNTER : .res 1  ;;= $3F
 FLAGECHO: .res 1  ;;= $40          ; This flag must contain 00 to disable character echo
 
 
-VERSION:    .byte "0.0.5"
+.DEFINE VERSION "0.0.5"
 
 .segment "BIOS"
 BIN      = $200          ; Buffer size = 128 bytes
@@ -142,6 +142,11 @@ CMD_HELP:
                 LDA     #<HELP
                 STA     MSGL
                 LDA     #>HELP
+                STA     MSGH
+                JSR     SHWMSG
+                LDA     #<HELP1
+                STA     MSGL
+                LDA     #>HELP1
                 STA     MSGH
                 JSR     SHWMSG
                 JMP     NEXT_CHAR
@@ -252,12 +257,13 @@ MSG10:           .byte "Turn on/off character echo",CR,0
 MSG11:           .byte LF,"Fill block:  AddrFrom AddrTo data(XXXX.XXXX:XX)",CR,0
 
 ;;Help
-HELP:            .byte CR,"Help for biosmon Version: ",VERSION,CR,LF
+HELP:            .byte CR,"Help for biosmon Version: "
+                 .byte VERSION,CR,LF
                  .byte "Commands:",CR
                  .byte "         B - memory Block copy",CR
                  .byte "         D - Dump memory",CR
-                 .byte "         F - Fill memory",CR
-                 .byte "         M - Memory poke",CR
+                 .byte "         F - Fill memory",CR,0
+HELP1:           .byte "         M - Memory poke",CR
                  .byte "         P - Peek memory",CR
                  .byte "         R - Run program",CR
                  .byte "         * - Turn on/off character echo",CR
