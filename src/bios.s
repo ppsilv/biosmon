@@ -156,7 +156,7 @@ TEMP_AST:       JMP     DIGITOU_AST
 .include "cmd_peek.s"
 .include "cmd_poke.s"
 .include "cmd_run.s"
-
+;falta implementar uma saida automática para disassembler e basic
 CMD_BASIC:
                 LDA     APP_TABLE 
                 CMP     #$FD
@@ -334,6 +334,7 @@ OLD_WOZ:
                 JSR     SHWMSG
                 JMP     NEXT_CHAR
 
+;.include "miniasm.s"
 .include "disasm.s"
 .include "drv16550.s"
 

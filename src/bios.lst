@@ -880,7 +880,7 @@ Current file: bios.s
 000426r 2  6C rr rr                     JMP     (ADDR1L)
 000429r 2  4C rr rr                     JMP     NEXT_CHAR
 00042Cr 2               
-00042Cr 1               
+00042Cr 1               ;falta implementar uma saida automática para disassembler e basic
 00042Cr 1               CMD_BASIC:
 00042Cr 1  A5 rr                        LDA     APP_TABLE
 00042Er 1  C9 FD                        CMP     #$FD
@@ -1115,6 +1115,7 @@ Current file: bios.s
 0008F8r 1  20 rr rr                     JSR     SHWMSG
 0008FBr 1  4C rr rr                     JMP     NEXT_CHAR
 0008FEr 1               
+0008FEr 1               ;.include "miniasm.s"
 0008FEr 1               .include "disasm.s"
 0008FEr 2               ;
 0008FEr 2               ; 6502/65C02 Disassembler
