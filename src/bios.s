@@ -305,7 +305,8 @@ MSG3:            .byte LF,"Dump Mem. Addr: Fmt XXXX.XXXX or XXXX:",CR,0
 MSG4:            .byte "Run program in Addr: Format abcd",CR,0
 MSG5:            .byte "EXECUTADO",CR,0
 MSG6:            .byte "Hex conv. error",CR,0
-MSG7:            .byte LF,"Poke: Fmt addr:dt",CR,0
+MSG7:            .byte LF,"Poke: Fmt [addr:dt]",CR,0
+MSG71:           .byte LF,"Peek: address",CR,0
 MSG8:            .byte LF,"Copy block:  AddrFrom AddrTo Lenght(XXXX.XXXX:XXXX)",CR,0
 MSG9:            .byte "Syntax error",CR,0
 MSG10:           .byte "Turn on/off character echo",CR,0

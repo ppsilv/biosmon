@@ -815,345 +815,367 @@ Current file: bios.s
 0003BEr 2               
 0003BEr 1               .include "cmd_peek.s"
 0003BEr 2               CMD_PEEK:
-0003BEr 2               
-0003BEr 2  4C rr rr                 JMP     NEXT_CHAR
-0003C1r 2               
-0003C1r 1               .include "cmd_poke.s"
-0003C1r 2               CMD_POKE:
-0003C1r 2  85 rr                        STA     LAST_CMD
-0003C3r 2  A9 rr                        LDA     #<MSG7
-0003C5r 2  85 rr                        STA     MSGL
-0003C7r 2  A9 rr                        LDA     #>MSG7
-0003C9r 2  85 rr                        STA     MSGH
-0003CBr 2  20 rr rr                     JSR     SHWMSG
-0003CEr 2  20 rr rr                     JSR     GETLINE
-0003D1r 2                               ;Get addr from
-0003D1r 2  A0 00                        LDY     #$00
-0003D3r 2  20 rr rr                     JSR     CONV_ADDR_TO_HEX
-0003D6r 2  A6 rr                        LDX     TMP1
-0003D8r 2  A4 rr                        LDY     TMP2
-0003DAr 2  20 rr rr                     JSR     SWAP_XY
-0003DDr 2  86 rr                        STX     ADDR1L
-0003DFr 2  84 rr                        STY     ADDR1H
-0003E1r 2               
-0003E1r 2                               ;VERIFICAR SE O COMANDO É :
-0003E1r 2  A0 04                        LDY     #$04
-0003E3r 2  B9 00 02                     LDA     BIN,Y
-0003E6r 2  C9 3A                        CMP     #$3A
-0003E8r 2  D0 19                        BNE     DIGITOU_M_FIM
-0003EAr 2               
-0003EAr 2  A0 05                        LDY     #$05
-0003ECr 2  B9 00 02                     LDA     BIN,Y
-0003EFr 2  20 rr rr                     JSR     ROL_LEFT
-0003F2r 2  85 rr                        STA     TMP1
-0003F4r 2  C8                           INY
-0003F5r 2  B9 00 02                     LDA     BIN,Y
-0003F8r 2  20 rr rr                     JSR     GET_DIG_RIGHT
-0003FBr 2  05 rr                        ORA     TMP1
-0003FDr 2  85 rr                        STA     TMP1
-0003FFr 2                               ;addressing mode of 65C02
-0003FFr 2                               ;STA     (ADDR1L)
-0003FFr 2                               ;addressing mode of 6502
-0003FFr 2  A0 00                        LDY     #$0
-000401r 2  91 rr                        STA     (ADDR1L),Y
-000403r 2               
-000403r 2               DIGITOU_M_FIM:
-000403r 2  4C rr rr                     JMP     NEXT_CHAR
-000406r 2               
-000406r 1               .include "cmd_run.s"
-000406r 2               CMD_RUN:
-000406r 2  85 rr                        STA     LAST_CMD
-000408r 2  A9 rr                        LDA     #<MSG4
-00040Ar 2  85 rr                        STA     MSGL
-00040Cr 2  A9 rr                        LDA     #>MSG4
-00040Er 2  85 rr                        STA     MSGH
-000410r 2  20 rr rr                     JSR     SHWMSG
-000413r 2  20 rr rr                     JSR     GET_ADDRESS
-000416r 2  A0 00                        LDY     #$00
-000418r 2  20 rr rr                     JSR     CONV_ADDR_TO_HEX
-00041Br 2  A6 rr                        LDX     TMP1
-00041Dr 2  A4 rr                        LDY     TMP2
-00041Fr 2  20 rr rr                     JSR     SWAP_XY
-000422r 2  86 rr                        STX     ADDR1L
-000424r 2  84 rr                        STY     ADDR1H
-000426r 2                               ;JSR     PRINT_ADDR_HEXA
-000426r 2  6C rr rr                     JMP     (ADDR1L)
-000429r 2  4C rr rr                     JMP     NEXT_CHAR
-00042Cr 2               
-00042Cr 1               ;falta implementar uma saida automática para disassembler e basic
-00042Cr 1               CMD_BASIC:
-00042Cr 1  A5 rr                        LDA     APP_TABLE
-00042Er 1  C9 FD                        CMP     #$FD
-000430r 1  D0 00                        BNE     TEMP_BAS
-000432r 1                               ;LDA     APP
-000432r 1                               ;JSR     BASIC
-000432r 1               TEMP_BAS:
-000432r 1  4C rr rr                     JMP     NEXT_CHAR
-000435r 1               CMD_DIS:
-000435r 1  A5 rr                        LDA     APP_TABLE
-000437r 1  C9 FE                        CMP     #$FE
-000439r 1                               ;BEQ     TEMP_DIS
-000439r 1  4C rr rr                     JMP     NEXT_CHAR
-00043Cr 1               
-00043Cr 1               SYNTAX_ERROR:
-00043Cr 1  A9 rr                        LDA     #<MSG9
-00043Er 1  85 rr                        STA     MSGL
-000440r 1  A9 rr                        LDA     #>MSG9
-000442r 1  85 rr                        STA     MSGH
-000444r 1  20 rr rr                     JSR     SHWMSG
-000447r 1  4C rr rr                     JMP     NEXT_CHAR
-00044Ar 1               
-00044Ar 1               CMD_HELP:
-00044Ar 1  85 rr                        STA     LAST_CMD
-00044Cr 1  A9 rr                        LDA     #<HELP
-00044Er 1  85 rr                        STA     MSGL
-000450r 1  A9 rr                        LDA     #>HELP
-000452r 1  85 rr                        STA     MSGH
-000454r 1  20 rr rr                     JSR     SHWMSG
-000457r 1  A9 rr                        LDA     #<HELP1
-000459r 1  85 rr                        STA     MSGL
-00045Br 1  A9 rr                        LDA     #>HELP1
-00045Dr 1  85 rr                        STA     MSGH
-00045Fr 1  20 rr rr                     JSR     SHWMSG
-000462r 1  4C rr rr                     JMP     NEXT_CHAR
-000465r 1               
-000465r 1               
-000465r 1               
-000465r 1               ;;ROL_LEFT_SAFE:
-000465r 1               ;;                JSR     HEX_2_ASC_SAFE
-000465r 1               ;;                BCC     ROL_FIM
-000465r 1               ;;                ROL
-000465r 1               ;;                ROL
-000465r 1               ;;                ROL
-000465r 1               ;;                ROL
-000465r 1               ;;                AND     #$F0
-000465r 1               ;;                SEC
-000465r 1               ;;                RTS
-000465r 1               ;;GET_DIG_RIGHT_SAFE:
-000465r 1               ;;                JSR     HEX_2_ASC_SAFE
-000465r 1               ;;                BCC     ROL_FIM
-000465r 1               ;;                AND     #$0F
-000465r 1               ;;                SEC
-000465r 1               ;;                RTS
-000465r 1               ;;
-000465r 1               ;;ROL_FIM:
-000465r 1               ;;                LDA     #<MSG6
-000465r 1               ;;                STA     MSGL
-000465r 1               ;;                LDA     #>MSG6
-000465r 1               ;;                STA     MSGH
-000465r 1               ;;                JSR     SHWMSG
-000465r 1               ;;                LDA     ERR01
-000465r 1               ;;                STA     ERRO
-000465r 1               ;;                CLC
-000465r 1               ;;                RTS
-000465r 1               ;;
-000465r 1               ;;
-000465r 1               ;;CONV_ADDR_TO_HEX_APAGARD_METODO_ANTIGO:
-000465r 1               ;;                ;;Dig 4
-000465r 1               ;;                LDA     BIN,Y
-000465r 1               ;;                JSR     ROL_LEFT
-000465r 1               ;;                STA     TMP
-000465r 1               ;;                ;;Dig 3
-000465r 1               ;;                INY
-000465r 1               ;;                LDA     BIN,Y
-000465r 1               ;;                JSR     GET_DIG_RIGHT
-000465r 1               ;;                ORA     TMP
-000465r 1               ;;                STA     TMP1
-000465r 1               ;;                JSR     PRINT_PAR1
-000465r 1               ;;                JSR     PRBYTE
-000465r 1               ;;                ;;Dig 2
-000465r 1               ;;                INY
-000465r 1               ;;                LDA     BIN,Y
-000465r 1               ;;                JSR     ROL_LEFT
-000465r 1               ;;                STA     TMP
-000465r 1               ;;                ;;Dig 1
-000465r 1               ;;                INY
-000465r 1               ;;                LDA     BIN,Y
-000465r 1               ;;                JSR     GET_DIG_RIGHT
-000465r 1               ;;                ORA     TMP
-000465r 1               ;;                STA     TMP2
-000465r 1               ;;                JSR     PRBYTE
-000465r 1               ;;                JSR     PRINT_PAR2
-000465r 1               ;;
-000465r 1               ;;                SEC
-000465r 1               ;;                RTS
-000465r 1               ;;
-000465r 1               ;;;*******************************************
-000465r 1               ;HEX_2_ASC_SAFE:
-000465r 1               ;Parameter: A digit to be converted
-000465r 1               ;Return...: A digit converted
-000465r 1               ;
-000465r 1               ;HEX_2_ASC_SAFE:
-000465r 1               ;;CONV_HEX_1DIG:
-000465r 1               ;                CMP     #$30
-000465r 1               ;                BCC     CONV_HEX_1DIG_FIM
-000465r 1               ;                CMP     #$3A
-000465r 1               ;                BCC     DIG_0_A_9
-000465r 1               ;                CMP     #$41
-000465r 1               ;                BCS     DIG_A_TO_Z
-000465r 1               ;                ;CARACTER PODE SER UM DESSES : ; < = > ? @
-000465r 1               ;                CLC     ;CLEAR CARRY FLAG DIG NOT CONVERTED
-000465r 1               ;                RTS
-000465r 1               ;DIG_A_TO_Z:
-000465r 1               ;                CMP     #$47
-000465r 1               ;                BCS     CONV_HEX_1DIG_FIM
-000465r 1               ;                SEC     ;Flag carry seted does not borrow
-000465r 1               ;                SBC     #$37
-000465r 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
-000465r 1               ;                RTS
-000465r 1               ;DIG_0_A_9:
-000465r 1               ;                SEC      ;Flag carry seted does not borrow
-000465r 1               ;                SBC     #$30
-000465r 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
-000465r 1               ;                RTS
-000465r 1               ;CONV_HEX_1DIG_FIM:
-000465r 1               ;                CLC
-000465r 1               ;                RTS
-000465r 1               
-000465r 1               ; Open Software Ltda Copyright (C) 2024.
-000465r 1               ;
-000465r 1               ; Monitor program source code for 6502 Microprocessor Kit for Spartan HMC56
-000465r 1               ; Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.
-000465r 1               ;
-000465r 1               
-000465r 1  0D 0A 2A 2A  MSGA1:           .byte CR,LF,"***************************************************************************",CR
-000469r 1  2A 2A 2A 2A  
-00046Dr 1  2A 2A 2A 2A  
-0004B3r 1  2A 20 20 20                   .byte "*                                                                         *",CR
-0004B7r 1  20 20 20 20  
-0004BBr 1  20 20 20 20  
-0004FFr 1  2A 20 4F 70                   .byte "* Open Software Ltda Copyright (C) 2024.                                  *",CR,0
-000503r 1  65 6E 20 53  
-000507r 1  6F 66 74 77  
-00054Cr 1  2A 20 20 20  MSGB1:           .byte "*                                                                         *",CR
-000550r 1  20 20 20 20  
-000554r 1  20 20 20 20  
-000598r 1  2A 20 50 44                   .byte "* PDSILVA - BIOSMON 2024 - Version: ",VERSION,"                                 *",CR
-00059Cr 1  53 49 4C 56  
-0005A0r 1  41 20 2D 20  
-0005E4r 1  2A 20 4D 6F                   .byte "* Monitor program for 6502 Microprocessor Kit Spartan HMC56               *",CR,0
-0005E8r 1  6E 69 74 6F  
-0005ECr 1  72 20 70 72  
-000631r 1  2A 20 57 72  MSGC1:           .byte "* Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.*",CR
-000635r 1  69 74 74 65  
-000639r 1  6E 20 62 79  
-00067Dr 1  2A 2A 2A 2A                   .byte "***************************************************************************",CR,LF,0
-000681r 1  2A 2A 2A 2A  
-000685r 1  2A 2A 2A 2A  
-0006CBr 1  49 6E 70 75  MSG2:            .byte "Input data: ",CR,0
-0006CFr 1  74 20 64 61  
-0006D3r 1  74 61 3A 20  
-0006D9r 1  0A 44 75 6D  MSG3:            .byte LF,"Dump Mem. Addr: Fmt XXXX.XXXX or XXXX:",CR,0
-0006DDr 1  70 20 4D 65  
-0006E1r 1  6D 2E 20 41  
-000702r 1  52 75 6E 20  MSG4:            .byte "Run program in Addr: Format abcd",CR,0
-000706r 1  70 72 6F 67  
-00070Ar 1  72 61 6D 20  
-000724r 1  45 58 45 43  MSG5:            .byte "EXECUTADO",CR,0
-000728r 1  55 54 41 44  
-00072Cr 1  4F 0D 00     
-00072Fr 1  48 65 78 20  MSG6:            .byte "Hex conv. error",CR,0
-000733r 1  63 6F 6E 76  
-000737r 1  2E 20 65 72  
-000740r 1  0A 50 6F 6B  MSG7:            .byte LF,"Poke: Fmt addr:dt",CR,0
-000744r 1  65 3A 20 46  
-000748r 1  6D 74 20 61  
-000754r 1  0A 43 6F 70  MSG8:            .byte LF,"Copy block:  AddrFrom AddrTo Lenght(XXXX.XXXX:XXXX)",CR,0
-000758r 1  79 20 62 6C  
-00075Cr 1  6F 63 6B 3A  
-00078Ar 1  53 79 6E 74  MSG9:            .byte "Syntax error",CR,0
-00078Er 1  61 78 20 65  
-000792r 1  72 72 6F 72  
-000798r 1  54 75 72 6E  MSG10:           .byte "Turn on/off character echo",CR,0
-00079Cr 1  20 6F 6E 2F  
-0007A0r 1  6F 66 66 20  
-0007B4r 1  0A 46 69 6C  MSG11:           .byte LF,"Fill block:  AddrFrom AddrTo data(XXXX.XXXX:XX)",CR,0
-0007B8r 1  6C 20 62 6C  
-0007BCr 1  6F 63 6B 3A  
-0007E6r 1               
-0007E6r 1               ;;Help
-0007E6r 1  0D 48 65 6C  HELP:            .byte CR,"Help for biosmon Version: "
-0007EAr 1  70 20 66 6F  
-0007EEr 1  72 20 62 69  
-000801r 1  30 2E 30 2E                   .byte VERSION,CR,LF
-000805r 1  35 0D 0A     
-000808r 1  43 6F 6D 6D                   .byte "Commands:",CR
-00080Cr 1  61 6E 64 73  
-000810r 1  3A 0D        
-000812r 1  20 20 20 20                   .byte "         C - memory Block copy",CR
-000816r 1  20 20 20 20  
-00081Ar 1  20 43 20 2D  
-000831r 1  20 20 20 20                   .byte "         D - Dump memory",CR
-000835r 1  20 20 20 20  
-000839r 1  20 44 20 2D  
-00084Ar 1  20 20 20 20                   .byte "         F - Fill memory",CR,0
-00084Er 1  20 20 20 20  
-000852r 1  20 46 20 2D  
-000864r 1  20 20 20 20  HELP1:           .byte "         M - Memory poke",CR
-000868r 1  20 20 20 20  
-00086Cr 1  20 4D 20 2D  
-00087Dr 1  20 20 20 20                   .byte "         P - Peek memory",CR
-000881r 1  20 20 20 20  
-000885r 1  20 50 20 2D  
-000896r 1  20 20 20 20                   .byte "         R - Run program",CR
-00089Ar 1  20 20 20 20  
-00089Er 1  20 52 20 2D  
-0008AFr 1  20 20 20 20                   .byte "         * - Turn on/off character echo",CR
-0008B3r 1  20 20 20 20  
-0008B7r 1  20 2A 20 2D  
-0008D7r 1  20 20 20 20                   .byte "         ? - Show help",CR,LF,0
-0008DBr 1  20 20 20 20  
-0008DFr 1  20 3F 20 2D  
-0008F0r 1               
-0008F0r 1               ;Used just for test of run cmd.
-0008F0r 1               
-0008F0r 1               OLD_WOZ:
-0008F0r 1  A9 rr                        LDA     #<MSG5
-0008F2r 1  85 rr                        STA     MSGL
-0008F4r 1  A9 rr                        LDA     #>MSG5
-0008F6r 1  85 rr                        STA     MSGH
-0008F8r 1  20 rr rr                     JSR     SHWMSG
-0008FBr 1  4C rr rr                     JMP     NEXT_CHAR
-0008FEr 1               
-0008FEr 1               ;.include "miniasm.s"
-0008FEr 1               .include "disasm.s"
-0008FEr 2               ;
-0008FEr 2               ; 6502/65C02 Disassembler
-0008FEr 2               ;
-0008FEr 2               ; Copyright (C) 2012 by Jeff Tranter <tranter@pobox.com>
-0008FEr 2               ;
-0008FEr 2               ; Licensed under the Apache License, Version 2.0 (the "License");
-0008FEr 2               ; you may not use this file except in compliance with the License.
-0008FEr 2               ; You may obtain a copy of the License at
-0008FEr 2               ;
-0008FEr 2               ;   http://www.apache.org/licenses/LICENSE-2.0
-0008FEr 2               ;
-0008FEr 2               ; Unless required by applicable law or agreed to in writing, software
-0008FEr 2               ; distributed under the License is distributed on an "AS IS" BASIS,
-0008FEr 2               ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-0008FEr 2               ; See the License for the specific language governing permissions and
-0008FEr 2               ; limitations under the License.
-0008FEr 2               ;
-0008FEr 2               ; Revision History
-0008FEr 2               ; Version Date         Comments
-0008FEr 2               ; 0.0     25-Mar-2012  First version started
-0008FEr 2               ; 0.9     28-Mar-2012  First public beta version
-0008FEr 2               
-0008FEr 2               ; *** ASSEMBLY TIME OPTIONS ***
-0008FEr 2               
-0008FEr 2               ; Uncomment this if you don't want instructions that operate on the
-0008FEr 2               ; accumulator like ASL to be shown as "ASL A" but instead just "ASL".
-0008FEr 2               ; NOACCUMULATOR = 1
-0008FEr 2               
-0008FEr 2               ; Uncomment this if you want the output to include source code only
-0008FEr 2               ; and not the data bytes in memory. This allows the output to be fed
-0008FEr 2               ; back to an assembler.
-0008FEr 2               ; SOURCEONLY = 1
-0008FEr 2               
-0008FEr 2               ; Uncomment next line to link with start address of $A000 for Multi I/0 Board EEPROM.
-0008FEr 2               ; .org $A000
-0008FEr 2               
-0008FEr 2               .segment "ZEROPAGE"
+0003BEr 2  85 rr                        STA     LAST_CMD
+0003C0r 2  A9 rr                        LDA     #<MSG71
+0003C2r 2  85 rr                        STA     MSGL
+0003C4r 2  A9 rr                        LDA     #>MSG71
+0003C6r 2  85 rr                        STA     MSGH
+0003C8r 2  20 rr rr                     JSR     SHWMSG
+0003CBr 2  20 rr rr                     JSR     GETLINE
+0003CEr 2                               ;Get addr from
+0003CEr 2  A0 00                        LDY     #$00
+0003D0r 2  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+0003D3r 2  A6 rr                        LDX     TMP1
+0003D5r 2  A4 rr                        LDY     TMP2
+0003D7r 2  20 rr rr                     JSR     SWAP_XY
+0003DAr 2  86 rr                        STX     ADDR1L
+0003DCr 2  84 rr                        STY     ADDR1H
+0003DEr 2               
+0003DEr 2                               ;VERIFICAR SE O COMANDO É :
+0003DEr 2  A0 00                        LDY     #$00
+0003E0r 2  B1 rr                        LDA     (ADDR1L),Y
+0003E2r 2  20 rr rr                     JSR     PRBYTE
+0003E5r 2  4C rr rr                     JMP     NEXT_CHAR
+0003E8r 2               
+0003E8r 1               .include "cmd_poke.s"
+0003E8r 2               CMD_POKE:
+0003E8r 2  85 rr                        STA     LAST_CMD
+0003EAr 2  A9 rr                        LDA     #<MSG7
+0003ECr 2  85 rr                        STA     MSGL
+0003EEr 2  A9 rr                        LDA     #>MSG7
+0003F0r 2  85 rr                        STA     MSGH
+0003F2r 2  20 rr rr                     JSR     SHWMSG
+0003F5r 2  20 rr rr                     JSR     GETLINE
+0003F8r 2                               ;Get addr from
+0003F8r 2  A0 00                        LDY     #$00
+0003FAr 2  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+0003FDr 2  A6 rr                        LDX     TMP1
+0003FFr 2  A4 rr                        LDY     TMP2
+000401r 2  20 rr rr                     JSR     SWAP_XY
+000404r 2  86 rr                        STX     ADDR1L
+000406r 2  84 rr                        STY     ADDR1H
+000408r 2               
+000408r 2                               ;VERIFICAR SE O COMANDO É :
+000408r 2  A0 04                        LDY     #$04
+00040Ar 2  B9 00 02                     LDA     BIN,Y
+00040Dr 2  C9 3A                        CMP     #$3A
+00040Fr 2  D0 19                        BNE     DIGITOU_M_FIM
+000411r 2               
+000411r 2  A0 05                        LDY     #$05
+000413r 2  B9 00 02                     LDA     BIN,Y
+000416r 2  20 rr rr                     JSR     ROL_LEFT
+000419r 2  85 rr                        STA     TMP1
+00041Br 2  C8                           INY
+00041Cr 2  B9 00 02                     LDA     BIN,Y
+00041Fr 2  20 rr rr                     JSR     GET_DIG_RIGHT
+000422r 2  05 rr                        ORA     TMP1
+000424r 2  85 rr                        STA     TMP1
+000426r 2                               ;addressing mode of 65C02
+000426r 2                               ;STA     (ADDR1L)
+000426r 2                               ;addressing mode of 6502
+000426r 2  A0 00                        LDY     #$0
+000428r 2  91 rr                        STA     (ADDR1L),Y
+00042Ar 2               
+00042Ar 2               DIGITOU_M_FIM:
+00042Ar 2  4C rr rr                     JMP     NEXT_CHAR
+00042Dr 2               
+00042Dr 1               .include "cmd_run.s"
+00042Dr 2               CMD_RUN:
+00042Dr 2  85 rr                        STA     LAST_CMD
+00042Fr 2  A9 rr                        LDA     #<MSG4
+000431r 2  85 rr                        STA     MSGL
+000433r 2  A9 rr                        LDA     #>MSG4
+000435r 2  85 rr                        STA     MSGH
+000437r 2  20 rr rr                     JSR     SHWMSG
+00043Ar 2  20 rr rr                     JSR     GET_ADDRESS
+00043Dr 2  A0 00                        LDY     #$00
+00043Fr 2  20 rr rr                     JSR     CONV_ADDR_TO_HEX
+000442r 2  A6 rr                        LDX     TMP1
+000444r 2  A4 rr                        LDY     TMP2
+000446r 2  20 rr rr                     JSR     SWAP_XY
+000449r 2  86 rr                        STX     ADDR1L
+00044Br 2  84 rr                        STY     ADDR1H
+00044Dr 2                               ;JSR     PRINT_ADDR_HEXA
+00044Dr 2  6C rr rr                     JMP     (ADDR1L)
+000450r 2  4C rr rr                     JMP     NEXT_CHAR
+000453r 2               
+000453r 1               ;falta implementar uma saida automática para disassembler e basic
+000453r 1               CMD_BASIC:
+000453r 1  A5 rr                        LDA     APP_TABLE
+000455r 1  C9 FD                        CMP     #$FD
+000457r 1  D0 00                        BNE     TEMP_BAS
+000459r 1                               ;LDA     APP
+000459r 1                               ;JSR     BASIC
+000459r 1               TEMP_BAS:
+000459r 1  4C rr rr                     JMP     NEXT_CHAR
+00045Cr 1               CMD_DIS:
+00045Cr 1  A5 rr                        LDA     APP_TABLE
+00045Er 1  C9 FE                        CMP     #$FE
+000460r 1                               ;BEQ     TEMP_DIS
+000460r 1  4C rr rr                     JMP     NEXT_CHAR
+000463r 1               
+000463r 1               SYNTAX_ERROR:
+000463r 1  A9 rr                        LDA     #<MSG9
+000465r 1  85 rr                        STA     MSGL
+000467r 1  A9 rr                        LDA     #>MSG9
+000469r 1  85 rr                        STA     MSGH
+00046Br 1  20 rr rr                     JSR     SHWMSG
+00046Er 1  4C rr rr                     JMP     NEXT_CHAR
+000471r 1               
+000471r 1               CMD_HELP:
+000471r 1  85 rr                        STA     LAST_CMD
+000473r 1  A9 rr                        LDA     #<HELP
+000475r 1  85 rr                        STA     MSGL
+000477r 1  A9 rr                        LDA     #>HELP
+000479r 1  85 rr                        STA     MSGH
+00047Br 1  20 rr rr                     JSR     SHWMSG
+00047Er 1  A9 rr                        LDA     #<HELP1
+000480r 1  85 rr                        STA     MSGL
+000482r 1  A9 rr                        LDA     #>HELP1
+000484r 1  85 rr                        STA     MSGH
+000486r 1  20 rr rr                     JSR     SHWMSG
+000489r 1  4C rr rr                     JMP     NEXT_CHAR
+00048Cr 1               
+00048Cr 1               
+00048Cr 1               
+00048Cr 1               ;;ROL_LEFT_SAFE:
+00048Cr 1               ;;                JSR     HEX_2_ASC_SAFE
+00048Cr 1               ;;                BCC     ROL_FIM
+00048Cr 1               ;;                ROL
+00048Cr 1               ;;                ROL
+00048Cr 1               ;;                ROL
+00048Cr 1               ;;                ROL
+00048Cr 1               ;;                AND     #$F0
+00048Cr 1               ;;                SEC
+00048Cr 1               ;;                RTS
+00048Cr 1               ;;GET_DIG_RIGHT_SAFE:
+00048Cr 1               ;;                JSR     HEX_2_ASC_SAFE
+00048Cr 1               ;;                BCC     ROL_FIM
+00048Cr 1               ;;                AND     #$0F
+00048Cr 1               ;;                SEC
+00048Cr 1               ;;                RTS
+00048Cr 1               ;;
+00048Cr 1               ;;ROL_FIM:
+00048Cr 1               ;;                LDA     #<MSG6
+00048Cr 1               ;;                STA     MSGL
+00048Cr 1               ;;                LDA     #>MSG6
+00048Cr 1               ;;                STA     MSGH
+00048Cr 1               ;;                JSR     SHWMSG
+00048Cr 1               ;;                LDA     ERR01
+00048Cr 1               ;;                STA     ERRO
+00048Cr 1               ;;                CLC
+00048Cr 1               ;;                RTS
+00048Cr 1               ;;
+00048Cr 1               ;;
+00048Cr 1               ;;CONV_ADDR_TO_HEX_APAGARD_METODO_ANTIGO:
+00048Cr 1               ;;                ;;Dig 4
+00048Cr 1               ;;                LDA     BIN,Y
+00048Cr 1               ;;                JSR     ROL_LEFT
+00048Cr 1               ;;                STA     TMP
+00048Cr 1               ;;                ;;Dig 3
+00048Cr 1               ;;                INY
+00048Cr 1               ;;                LDA     BIN,Y
+00048Cr 1               ;;                JSR     GET_DIG_RIGHT
+00048Cr 1               ;;                ORA     TMP
+00048Cr 1               ;;                STA     TMP1
+00048Cr 1               ;;                JSR     PRINT_PAR1
+00048Cr 1               ;;                JSR     PRBYTE
+00048Cr 1               ;;                ;;Dig 2
+00048Cr 1               ;;                INY
+00048Cr 1               ;;                LDA     BIN,Y
+00048Cr 1               ;;                JSR     ROL_LEFT
+00048Cr 1               ;;                STA     TMP
+00048Cr 1               ;;                ;;Dig 1
+00048Cr 1               ;;                INY
+00048Cr 1               ;;                LDA     BIN,Y
+00048Cr 1               ;;                JSR     GET_DIG_RIGHT
+00048Cr 1               ;;                ORA     TMP
+00048Cr 1               ;;                STA     TMP2
+00048Cr 1               ;;                JSR     PRBYTE
+00048Cr 1               ;;                JSR     PRINT_PAR2
+00048Cr 1               ;;
+00048Cr 1               ;;                SEC
+00048Cr 1               ;;                RTS
+00048Cr 1               ;;
+00048Cr 1               ;;;*******************************************
+00048Cr 1               ;HEX_2_ASC_SAFE:
+00048Cr 1               ;Parameter: A digit to be converted
+00048Cr 1               ;Return...: A digit converted
+00048Cr 1               ;
+00048Cr 1               ;HEX_2_ASC_SAFE:
+00048Cr 1               ;;CONV_HEX_1DIG:
+00048Cr 1               ;                CMP     #$30
+00048Cr 1               ;                BCC     CONV_HEX_1DIG_FIM
+00048Cr 1               ;                CMP     #$3A
+00048Cr 1               ;                BCC     DIG_0_A_9
+00048Cr 1               ;                CMP     #$41
+00048Cr 1               ;                BCS     DIG_A_TO_Z
+00048Cr 1               ;                ;CARACTER PODE SER UM DESSES : ; < = > ? @
+00048Cr 1               ;                CLC     ;CLEAR CARRY FLAG DIG NOT CONVERTED
+00048Cr 1               ;                RTS
+00048Cr 1               ;DIG_A_TO_Z:
+00048Cr 1               ;                CMP     #$47
+00048Cr 1               ;                BCS     CONV_HEX_1DIG_FIM
+00048Cr 1               ;                SEC     ;Flag carry seted does not borrow
+00048Cr 1               ;                SBC     #$37
+00048Cr 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
+00048Cr 1               ;                RTS
+00048Cr 1               ;DIG_0_A_9:
+00048Cr 1               ;                SEC      ;Flag carry seted does not borrow
+00048Cr 1               ;                SBC     #$30
+00048Cr 1               ;                SEC     ;SET CARRY FLAG TO SIGN DIG CONVERTED
+00048Cr 1               ;                RTS
+00048Cr 1               ;CONV_HEX_1DIG_FIM:
+00048Cr 1               ;                CLC
+00048Cr 1               ;                RTS
+00048Cr 1               
+00048Cr 1               ; Open Software Ltda Copyright (C) 2024.
+00048Cr 1               ;
+00048Cr 1               ; Monitor program source code for 6502 Microprocessor Kit for Spartan HMC56
+00048Cr 1               ; Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.
+00048Cr 1               ;
+00048Cr 1               
+00048Cr 1  0D 0A 2A 2A  MSGA1:           .byte CR,LF,"***************************************************************************",CR
+000490r 1  2A 2A 2A 2A  
+000494r 1  2A 2A 2A 2A  
+0004DAr 1  2A 20 20 20                   .byte "*                                                                         *",CR
+0004DEr 1  20 20 20 20  
+0004E2r 1  20 20 20 20  
+000526r 1  2A 20 4F 70                   .byte "* Open Software Ltda Copyright (C) 2024.                                  *",CR,0
+00052Ar 1  65 6E 20 53  
+00052Er 1  6F 66 74 77  
+000573r 1  2A 20 20 20  MSGB1:           .byte "*                                                                         *",CR
+000577r 1  20 20 20 20  
+00057Br 1  20 20 20 20  
+0005BFr 1  2A 20 50 44                   .byte "* PDSILVA - BIOSMON 2024 - Version: ",VERSION,"                                 *",CR
+0005C3r 1  53 49 4C 56  
+0005C7r 1  41 20 2D 20  
+00060Br 1  2A 20 4D 6F                   .byte "* Monitor program for 6502 Microprocessor Kit Spartan HMC56               *",CR,0
+00060Fr 1  6E 69 74 6F  
+000613r 1  72 20 70 72  
+000658r 1  2A 20 57 72  MSGC1:           .byte "* Written by Paulo Da Silva(pgordao), ppsilv@gmail.com Copyright (C) 2024.*",CR
+00065Cr 1  69 74 74 65  
+000660r 1  6E 20 62 79  
+0006A4r 1  2A 2A 2A 2A                   .byte "***************************************************************************",CR,LF,0
+0006A8r 1  2A 2A 2A 2A  
+0006ACr 1  2A 2A 2A 2A  
+0006F2r 1  49 6E 70 75  MSG2:            .byte "Input data: ",CR,0
+0006F6r 1  74 20 64 61  
+0006FAr 1  74 61 3A 20  
+000700r 1  0A 44 75 6D  MSG3:            .byte LF,"Dump Mem. Addr: Fmt XXXX.XXXX or XXXX:",CR,0
+000704r 1  70 20 4D 65  
+000708r 1  6D 2E 20 41  
+000729r 1  52 75 6E 20  MSG4:            .byte "Run program in Addr: Format abcd",CR,0
+00072Dr 1  70 72 6F 67  
+000731r 1  72 61 6D 20  
+00074Br 1  45 58 45 43  MSG5:            .byte "EXECUTADO",CR,0
+00074Fr 1  55 54 41 44  
+000753r 1  4F 0D 00     
+000756r 1  48 65 78 20  MSG6:            .byte "Hex conv. error",CR,0
+00075Ar 1  63 6F 6E 76  
+00075Er 1  2E 20 65 72  
+000767r 1  0A 50 6F 6B  MSG7:            .byte LF,"Poke: Fmt [addr:dt]",CR,0
+00076Br 1  65 3A 20 46  
+00076Fr 1  6D 74 20 5B  
+00077Dr 1  0A 50 65 65  MSG71:           .byte LF,"Peek: address",CR,0
+000781r 1  6B 3A 20 61  
+000785r 1  64 64 72 65  
+00078Dr 1  0A 43 6F 70  MSG8:            .byte LF,"Copy block:  AddrFrom AddrTo Lenght(XXXX.XXXX:XXXX)",CR,0
+000791r 1  79 20 62 6C  
+000795r 1  6F 63 6B 3A  
+0007C3r 1  53 79 6E 74  MSG9:            .byte "Syntax error",CR,0
+0007C7r 1  61 78 20 65  
+0007CBr 1  72 72 6F 72  
+0007D1r 1  54 75 72 6E  MSG10:           .byte "Turn on/off character echo",CR,0
+0007D5r 1  20 6F 6E 2F  
+0007D9r 1  6F 66 66 20  
+0007EDr 1  0A 46 69 6C  MSG11:           .byte LF,"Fill block:  AddrFrom AddrTo data(XXXX.XXXX:XX)",CR,0
+0007F1r 1  6C 20 62 6C  
+0007F5r 1  6F 63 6B 3A  
+00081Fr 1               
+00081Fr 1               ;;Help
+00081Fr 1  0D 48 65 6C  HELP:            .byte CR,"Help for biosmon Version: "
+000823r 1  70 20 66 6F  
+000827r 1  72 20 62 69  
+00083Ar 1  30 2E 30 2E                   .byte VERSION,CR,LF
+00083Er 1  35 0D 0A     
+000841r 1  43 6F 6D 6D                   .byte "Commands:",CR
+000845r 1  61 6E 64 73  
+000849r 1  3A 0D        
+00084Br 1  20 20 20 20                   .byte "         C - memory Block copy",CR
+00084Fr 1  20 20 20 20  
+000853r 1  20 43 20 2D  
+00086Ar 1  20 20 20 20                   .byte "         D - Dump memory",CR
+00086Er 1  20 20 20 20  
+000872r 1  20 44 20 2D  
+000883r 1  20 20 20 20                   .byte "         F - Fill memory",CR,0
+000887r 1  20 20 20 20  
+00088Br 1  20 46 20 2D  
+00089Dr 1  20 20 20 20  HELP1:           .byte "         M - Memory poke",CR
+0008A1r 1  20 20 20 20  
+0008A5r 1  20 4D 20 2D  
+0008B6r 1  20 20 20 20                   .byte "         P - Peek memory",CR
+0008BAr 1  20 20 20 20  
+0008BEr 1  20 50 20 2D  
+0008CFr 1  20 20 20 20                   .byte "         R - Run program",CR
+0008D3r 1  20 20 20 20  
+0008D7r 1  20 52 20 2D  
+0008E8r 1  20 20 20 20                   .byte "         * - Turn on/off character echo",CR
+0008ECr 1  20 20 20 20  
+0008F0r 1  20 2A 20 2D  
+000910r 1  20 20 20 20                   .byte "         ? - Show help",CR,LF,0
+000914r 1  20 20 20 20  
+000918r 1  20 3F 20 2D  
+000929r 1               
+000929r 1               ;Used just for test of run cmd.
+000929r 1               
+000929r 1               OLD_WOZ:
+000929r 1  A9 rr                        LDA     #<MSG5
+00092Br 1  85 rr                        STA     MSGL
+00092Dr 1  A9 rr                        LDA     #>MSG5
+00092Fr 1  85 rr                        STA     MSGH
+000931r 1  20 rr rr                     JSR     SHWMSG
+000934r 1  4C rr rr                     JMP     NEXT_CHAR
+000937r 1               
+000937r 1               ;.include "miniasm.s"
+000937r 1               .include "disasm.s"
+000937r 2               ;
+000937r 2               ; 6502/65C02 Disassembler
+000937r 2               ;
+000937r 2               ; Copyright (C) 2012 by Jeff Tranter <tranter@pobox.com>
+000937r 2               ;
+000937r 2               ; Licensed under the Apache License, Version 2.0 (the "License");
+000937r 2               ; you may not use this file except in compliance with the License.
+000937r 2               ; You may obtain a copy of the License at
+000937r 2               ;
+000937r 2               ;   http://www.apache.org/licenses/LICENSE-2.0
+000937r 2               ;
+000937r 2               ; Unless required by applicable law or agreed to in writing, software
+000937r 2               ; distributed under the License is distributed on an "AS IS" BASIS,
+000937r 2               ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+000937r 2               ; See the License for the specific language governing permissions and
+000937r 2               ; limitations under the License.
+000937r 2               ;
+000937r 2               ; Revision History
+000937r 2               ; Version Date         Comments
+000937r 2               ; 0.0     25-Mar-2012  First version started
+000937r 2               ; 0.9     28-Mar-2012  First public beta version
+000937r 2               
+000937r 2               ; *** ASSEMBLY TIME OPTIONS ***
+000937r 2               
+000937r 2               ; Uncomment this if you don't want instructions that operate on the
+000937r 2               ; accumulator like ASL to be shown as "ASL A" but instead just "ASL".
+000937r 2               ; NOACCUMULATOR = 1
+000937r 2               
+000937r 2               ; Uncomment this if you want the output to include source code only
+000937r 2               ; and not the data bytes in memory. This allows the output to be fed
+000937r 2               ; back to an assembler.
+000937r 2               ; SOURCEONLY = 1
+000937r 2               
+000937r 2               ; Uncomment next line to link with start address of $A000 for Multi I/0 Board EEPROM.
+000937r 2               ; .org $A000
+000937r 2               
+000937r 2               .segment "ZEROPAGE"
 000015r 2               
 000015r 2               ; *** VARIABLES ***
 000015r 2               
