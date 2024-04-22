@@ -1,7 +1,7 @@
 .segment "DRV"
 
 ;Uart registers
-PORT = $B000            ;;Uart address
+PORT = $FF00            ;;Uart address
 R_RX = $00    ;;receiver buffer register (read only)
 R_TX = $00    ;;transmitter holding register (write only)
 RDLL = $00    ;;divisor latch LSB (if DLAB=1)
@@ -13,7 +13,7 @@ RLCR = $03    ;;line control register
 RMCR = $04    ;;modem control register
 RLSR = $05    ;;line status register
 RMSR = $06    ;;modem status register
-RSCR = $07	;;scratch register
+RSCR = $07	  ;;scratch register
 
 ; Constants
 .if .not .def(CR)

@@ -18,6 +18,19 @@
 ; Added Block command a block copy: B ADDR_FROM ADDR_TO   
 ; Changed the code structure all commands gets its own files .s
 ;
+; Version.: 0.0.6
+;
+; The addresses of ram, rom and IO has changed to:
+; SRAM = 32768 bytes 0X0000 <-> 0x7FFF
+; ROM  = 32513 bytes 0x8000 <-> 0xFEFF
+; IO   =   128 bytes 0xFF00 <-> 0xFF7F
+; ROM  =   128 bytes 0xFF80 <-> 0xFFFF
+;
+
+
+
+
+;
 
 .setcpu "6502"
 
@@ -43,7 +56,7 @@ COUNTER : .res 1  ;;= $3F
 FLAGECHO: .res 1  ;;= $40          ; This flag must contain 00 to disable character echo
 APP_TABLE:.res 4  ;;4 bytes, 2 bytes for each high application's address byte format App. code, high address bytes
 
-.DEFINE VERSION "0.0.5"
+.DEFINE VERSION "0.0.6"
 
 .segment "BIOS"
 BIN      = $200          ; Buffer size = 128 bytes
@@ -117,9 +130,9 @@ NEXT_CHAR:
 NO_ECHO:
                 CMP     #'*'            ;Turn on/off character echo
                 BEQ     TEMP_AST
-                CMP     #'X'            ;Execute disassembler
+                CMP     #'X'            ;Execute disassembler LACK OF IMPLEMENTATION
                 BEQ     TEMP_X
-                CMP     #'B'            ;Execute basic compiler
+                CMP     #'B'            ;Execute basic compiler  LACK OF IMPLEMENTATION
                 BEQ     TEMP_B
                 CMP     #'C'            ;Copy memory block from source to dest
                 BEQ     TEMP_C

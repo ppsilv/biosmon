@@ -2200,7 +2200,7 @@ Current file: bios.s
 000679r 2               .segment "DRV"
 000000r 2               
 000000r 2               ;Uart registers
-000000r 2               PORT = $B000            ;;Uart address
+000000r 2               PORT = $FF00            ;;Uart address
 000000r 2               R_RX = $00    ;;receiver buffer register (read only)
 000000r 2               R_TX = $00    ;;transmitter holding register (write only)
 000000r 2               RDLL = $00    ;;divisor latch LSB (if DLAB=1)
@@ -2212,7 +2212,7 @@ Current file: bios.s
 000000r 2               RMCR = $04    ;;modem control register
 000000r 2               RLSR = $05    ;;line status register
 000000r 2               RMSR = $06    ;;modem status register
-000000r 2               RSCR = $07	;;scratch register
+000000r 2               RSCR = $07	  ;;scratch register
 000000r 2               
 000000r 2               ; Constants
 000000r 2               .if .not .def(CR)
@@ -2251,20 +2251,20 @@ Current file: bios.s
 000000r 2               
 000000r 2               INITUART:
 000000r 2  A9 80            LDA        #DLAB               ;set the divisor latch access bit (DLAB)
-000002r 2  8D 03 B0         STA        PORT+RLCR
+000002r 2  8D 03 FF         STA        PORT+RLCR
 000005r 2  A9 0C            LDA        #DIV_9600_LO        ;store divisor low byte (9600 baud @ 1,8 MHz clock)
-000007r 2  8D 00 B0         STA        PORT+RDLL
+000007r 2  8D 00 FF         STA        PORT+RDLL
 00000Ar 2  A9 00            LDA        #DIV_9600_HI        ;store divisor hi byte
-00000Cr 2  8D 01 B0         STA        PORT+RDLH
+00000Cr 2  8D 01 FF         STA        PORT+RDLH
 00000Fr 2  A9 07            LDA        #FIFO_ENABLE        ;enable the UART FIFO
-000011r 2  8D 02 B0         STA        PORT+RFCR
+000011r 2  8D 02 FF         STA        PORT+RFCR
 000014r 2  A9 00            LDA        #POLLED_MODE	       ;disable all interrupts
-000016r 2  8D 01 B0         STA        PORT+RIER
+000016r 2  8D 01 FF         STA        PORT+RIER
 000019r 2  A9 03        	LDA        #LCR_8N1            ;set 8 data bits, 1 stop bit, no parity, disable DLAB
-00001Br 2  8D 03 B0         STA        PORT+RLCR
+00001Br 2  8D 03 FF         STA        PORT+RLCR
 00001Er 2  A9 2B            LDA        #MCR_OUT2 + MCR_RTS + MCR_DTR + MCR_AFCE
-000020r 2  8D 04 B0         STA        PORT+RMCR
-000023r 2  AD 00 B0         LDA        PORT+R_RX           ;Clear RX buffer
+000020r 2  8D 04 FF         STA        PORT+RMCR
+000023r 2  AD 00 FF         LDA        PORT+R_RX           ;Clear RX buffer
 000026r 2  60               RTS
 000027r 2               
 000027r 2               
@@ -2274,16 +2274,16 @@ Current file: bios.s
 000027r 2               ; FUNÇÃO BLOCANTE COM CARACTER ECHO
 000027r 2               B_READ_BYTE_ECHO:
 000027r 2               READ_BYTE:
-000027r 2  AD 05 B0     	LDA PORT+RLSR 												    ;// check the line status register:
+000027r 2  AD 05 FF     	LDA PORT+RLSR 												    ;// check the line status register:
 00002Ar 2  29 1E        	AND #(OVERRUN_ERR | PARITY_ERR | FRAMING_ERR | BREAK_INT)   ; check for errors
 00002Cr 2  F0 06        	BEQ NO_ERR 												    ;// if no error bits, are set, no error
-00002Er 2  AD 00 B0     	LDA PORT+R_RX
+00002Er 2  AD 00 FF     	LDA PORT+R_RX
 000031r 2  4C rr rr     	JMP READ_BYTE
 000034r 2               NO_ERR:
-000034r 2  AD 05 B0     	LDA PORT+RLSR 												    ;// reload the line status register
+000034r 2  AD 05 FF     	LDA PORT+RLSR 												    ;// reload the line status register
 000037r 2  29 01        	AND #DATA_READY
 000039r 2  F0 EC        	BEQ READ_BYTE   											;// if data ready is not set, loop
-00003Br 2  AD 00 B0     	LDA PORT+R_RX
+00003Br 2  AD 00 FF     	LDA PORT+R_RX
 00003Er 2               ;ECHO CHAR
 00003Er 2  20 rr rr         JSR WRITE_BYTE
 000041r 2               ;*********
@@ -2297,11 +2297,11 @@ Current file: bios.s
 000043r 2               WRITE_BYTE:
 000043r 2  85 rr            STA     RACC                     ; Save A Reg
 000045r 2               WAIT_FOR_THR_EMPTY:
-000045r 2  AD 05 B0         LDA     PORT+RLSR           ; Get the Line Status Register
+000045r 2  AD 05 FF         LDA     PORT+RLSR           ; Get the Line Status Register
 000048r 2  29 60            AND     #THR_EMPTY          ; Check for TX empty
 00004Ar 2  F0 F9            BEQ     WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
 00004Cr 2  A5 rr        	LDA     RACC                ;
-00004Er 2  8D 00 B0     	STA     PORT+R_TX 			; send the byte
+00004Er 2  8D 00 FF     	STA     PORT+R_TX 			; send the byte
 000051r 2               ;;DELAY BETWEEN CHAR SENT
 000051r 2               
 000051r 2  A9 FF            LDA     #$FF
@@ -2320,11 +2320,11 @@ Current file: bios.s
 000061r 2  C9 0D            CMP     #$0D
 000063r 2  D0 0C            BNE     WRITE_BYTE_WITH_ECHO_FIM
 000065r 2               @WAIT_FOR_THR_EMPTY:
-000065r 2  AD 05 B0         LDA     PORT+RLSR           ; Get the Line Status Register
+000065r 2  AD 05 FF         LDA     PORT+RLSR           ; Get the Line Status Register
 000068r 2  29 60            AND     #THR_EMPTY          ; Check for TX empty
 00006Ar 2  F0 F9            BEQ     @WAIT_FOR_THR_EMPTY 	; loop while the THR is not empty
 00006Cr 2  A9 0A            LDA     #$0A
-00006Er 2  8D 00 B0     	STA     PORT+R_TX 			; send the byte
+00006Er 2  8D 00 FF     	STA     PORT+R_TX 			; send the byte
 000071r 2               WRITE_BYTE_WITH_ECHO_FIM:
 000071r 2  60               RTS
 000072r 2               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2333,16 +2333,16 @@ Current file: bios.s
 000072r 2               ; Flag CARRY: Set when character ready
 000072r 2               ;             Clear when no character ready
 000072r 2               READ_BYTE_NB:
-000072r 2  AD 05 B0     	LDA PORT+RLSR 												;// check the line status register:
+000072r 2  AD 05 FF     	LDA PORT+RLSR 												;// check the line status register:
 000075r 2  29 1E        	AND #(OVERRUN_ERR | PARITY_ERR | FRAMING_ERR | BREAK_INT)   ; check for errors
 000077r 2  F0 06        	BEQ @NO_ERR 												    ;// if no error bits, are set, no error
-000079r 2  AD 00 B0     	LDA PORT+R_RX
+000079r 2  AD 00 FF     	LDA PORT+R_RX
 00007Cr 2  4C rr rr     	JMP NO_CHAR
 00007Fr 2               @NO_ERR:
-00007Fr 2  AD 05 B0     	LDA PORT+RLSR 												    ;// reload the line status register
+00007Fr 2  AD 05 FF     	LDA PORT+RLSR 												    ;// reload the line status register
 000082r 2  29 01        	AND #DATA_READY
 000084r 2  F0 0B        	BEQ NO_CHAR   											;// if data ready is not set, loop
-000086r 2  AD 00 B0     	LDA PORT+R_RX
+000086r 2  AD 00 FF     	LDA PORT+R_RX
 000089r 2  20 rr rr         JSR     WRITE_BYTE
 00008Cr 2  20 rr rr         JSR     ACC_DELAY
 00008Fr 2  38           	SEC		    										;// otherwise, we have data! Load it. 				    									;// clear the carry flag to indicate no error
